@@ -294,7 +294,6 @@ function App() {
                           draggable='false'
                         />
                       )}
-                      <div className='card-symbol'></div>
                     </div>
                     <div className='card-footer'>
                       <span>{c.data.type}</span>
