@@ -5,7 +5,7 @@
     "rarity": "SSR",
     "type": "ドラゴン",
     "series": "COSMIC LEGENDS",
-    "image": "/cards/asteria.png"
+    "image": "/cards/S__97222675_0.jpg"
   },
   {
     "id": "phoenix-time",
@@ -13,7 +13,7 @@
     "rarity": "SSR",
     "type": "ビースト",
     "series": "COSMIC LEGENDS",
-    "image": "/cards/phoenix.png"
+    "image": "/cards/S__97222674_0.jpg"
   },
   {
     "id": "zero-magician",
@@ -21,7 +21,7 @@
     "rarity": "SSR",
     "type": "マジシャン",
     "series": "ARCANE CHRONICLE",
-    "image": "/cards/magician.png"
+    "image": "/cards/S__97222673_0.jpg"
   },
 
   {
@@ -30,7 +30,7 @@
     "rarity": "SR",
     "type": "ビースト",
     "series": "STORM EDGE",
-    "image": "/cards/raiger.png"
+    "image": "/cards/S__97222669_0.jpg"
   },
   {
     "id": "sea-pegasus",
@@ -38,7 +38,7 @@
     "rarity": "SR",
     "type": "ドラゴン",
     "series": "OCEAN ABYSS",
-    "image": "/cards/pegasus.png"
+    "image": "/cards/S__97222670_0.jpg"
   },
 
   {
@@ -47,7 +47,7 @@
     "rarity": "R",
     "type": "ビースト",
     "series": "BASIC PACK",
-    "image": "/cards/fire-lizard.png"
+    "image": "/cards/S__97222668_0.jpg"
   },
   {
     "id": "apprentice-mage",
@@ -55,6 +55,6 @@
     "rarity": "R",
     "type": "マジシャン",
     "series": "BASIC PACK",
-    "image": "/cards/apprentice.png"
+    "image": "/cards/S__97222671_0.jpg"
   }
 ]
