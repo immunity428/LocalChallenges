@@ -525,3 +525,25 @@ loading-orbs span:nth-child(3) {
     opacity: 1;
   }
 }
+
+/* カード画像 */
+.card-image {
+  position: absolute;
+  inset: 6% 8%; /* カード枠に合わせた余白 */
+  width: 84%;
+  height: 88%;
+  object-fit: cover; /* 画像を切れずにきれいに収める */
+  border-radius: 12px;
+  pointer-events: none; /* ドラッグや選択を防止 */
+  user-select: none;
+}
+
+/* SSR 画像はより明るく */
+.card-ssr .card-image {
+  filter: brightness(1.15) saturate(1.2);
+}
+
+/* SR は少しだけ強調 */
+.card-sr .card-image {
+  filter: brightness(1.08);
+}
