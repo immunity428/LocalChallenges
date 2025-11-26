@@ -1,0 +1,60 @@
+[
+  {
+    "id": "asteria-dragon",
+    "name": "星降るドラゴン・アステリア",
+    "rarity": "SSR",
+    "type": "ドラゴン",
+    "series": "COSMIC LEGENDS",
+    "image": "/cards/asteria.png"
+  },
+  {
+    "id": "phoenix-time",
+    "name": "時空を裂くフェニックス",
+    "rarity": "SSR",
+    "type": "ビースト",
+    "series": "COSMIC LEGENDS",
+    "image": "/cards/phoenix.png"
+  },
+  {
+    "id": "zero-magician",
+    "name": "ゼロポイント・マジシャン",
+    "rarity": "SSR",
+    "type": "マジシャン",
+    "series": "ARCANE CHRONICLE",
+    "image": "/cards/magician.png"
+  },
+
+  {
+    "id": "raiger",
+    "name": "雷鳴のライガー",
+    "rarity": "SR",
+    "type": "ビースト",
+    "series": "STORM EDGE",
+    "image": "/cards/raiger.png"
+  },
+  {
+    "id": "sea-pegasus",
+    "name": "深淵のシーペガサス",
+    "rarity": "SR",
+    "type": "ドラゴン",
+    "series": "OCEAN ABYSS",
+    "image": "/cards/pegasus.png"
+  },
+
+  {
+    "id": "fire-lizard",
+    "name": "炎のトカゲ",
+    "rarity": "R",
+    "type": "ビースト",
+    "series": "BASIC PACK",
+    "image": "/cards/fire-lizard.png"
+  },
+  {
+    "id": "apprentice-mage",
+    "name": "見習い魔法使い",
+    "rarity": "R",
+    "type": "マジシャン",
+    "series": "BASIC PACK",
+    "image": "/cards/apprentice.png"
+  }
+]
