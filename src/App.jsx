@@ -213,7 +213,7 @@ function App() {
   };
 
   const handlePackClick = () => {
-    showToast('4時間に1回、無料でほっこりカードが5枚引けます！');
+    showToast('ほっこりカードが5枚引けます！');
   };
 
   return (
@@ -241,7 +241,7 @@ function App() {
             <div className='title'>ほっこりカードガチャ</div>
             <div className='subtitle'>
               社員同士の「ありがとう」「おつかれさま」を集める
-              4時間に1回の無料ガチャ
+              ガチャ
             </div>
           </div>
 
