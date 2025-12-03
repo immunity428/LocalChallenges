@@ -1,47 +1,47 @@
 [
   {
-    "id": "thanks-teamwork",
-    "name": "チームワークありがとうカード",
-    "rarity": "SR",
-    "category": "ありがとう",
-    "series": "HOKKORI COLLECTION",
-    "image": "/cards/thanks_team.png",
-    "message": "今日もチームで助け合えたね！このカードをきっかけに『ありがとう』を一言そえてみよう。"
-  },
-  {
-    "id": "coffee-break",
-    "name": "いっしょにコーヒーブレイク",
+    "id": "lunch-trouble",
+    "name": "ラーメン",
     "rarity": "R",
-    "category": "休憩のお誘い",
+    "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/coffee.png",
-    "message": "「おつかれさま、ちょっと一息つきませんか？」を伝えるカード。気になる人にそっと送ってみよう。"
+    "image": "/cards/ramen.png",
+    "message": "昨日食べたラーメン青くて一見不味そうだけどめちゃくちゃ美味しかった"
   },
   {
-    "id": "good-job",
-    "name": "グッジョブ！カード",
+    "id": "excel-death",
+    "name": "Excelの反乱",
     "rarity": "SR",
-    "category": "称賛",
+    "category": "悲劇",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/good_job.png",
-    "message": "誰かのがんばりを見つけたら、このカードで気軽に『ナイス！』を届けよう。"
+    "image": "/cards/error.png",
+    "message": "いいところまで入力したのに「応答なし」になった時の絶望感よ。保存してない。帰りたい。"
   },
   {
-    "id": "welcome-newcomer",
-    "name": "ようこそカード",
+    "id": "ac-war",
+    "name": "空調戦争",
+    "rarity": "R",
+    "category": "環境",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/aircon.png",
+    "message": "オフィスの空調、26度だと寒いし27度だと暑い。この1度の差に俺たちは翻弄されている。"
+  },
+  {
+    "id": "cat-lover",
+    "name": "我が家の猫を見て",
     "rarity": "SSR",
-    "category": "歓迎",
+    "category": "癒し",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/welcome.png",
-    "message": "新しく仲間になった人へ。自己紹介と一緒にこのカードを添えて、最初の一歩をほっこりに。"
+    "image": "/cards/cat.png",
+    "message": "仕事中ですが、うちの猫が可愛すぎるので共有します。この寝顔を見るために働いています。"
   },
   {
-    "id": "thanks-small-help",
-    "name": "ちょっとした助けに感謝",
+    "id": "typo-king",
+    "name": "誤字の神様",
     "rarity": "R",
-    "category": "ありがとう",
+    "category": "失敗",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/small_help.png",
-    "message": "「あの一言、助かりました！」そんな小さな感謝を伝えるためのカード。"
+    "image": "/cards/typo.png",
+    "message": "「お疲れ様です」を「お憑かれ様です」って打って送信しかけた。危うく呪うところだった。"
   }
 ]
