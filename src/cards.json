@@ -5,7 +5,7 @@
     "rarity": "R",
     "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "public/cards/102.jpg",
+    "image": "./public/cards/102.jpg",
     "message": "昨日食べたラーメン青くて一見不味そうだけどめちゃくちゃ美味しかった"
   },
   {
@@ -14,7 +14,7 @@
     "rarity": "R",
     "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "public/cards/101.jpg",
+    "image": "./public/cards/101.jpg",
     "message": "最高に美味しいカレーだった"
   },
   {
@@ -41,7 +41,7 @@
     "rarity": "SSR",
     "category": "癒し",
     "series": "HOKKORI COLLECTION",
-    "image": "public/cards/103.jpg",
+    "image": "./public/cards/103.jpg",
     "message": "仕事中ですが、うちの猫が可愛すぎるので共有します。この寝顔を見るために働いています。"
   },
   {
