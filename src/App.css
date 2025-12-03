@@ -12,7 +12,7 @@
 
 .app {
   width: 100%;
-  max-width: 480px; /* スマホ想定 */
+  max-width: 480px;
   background: rgba(255, 255, 255, 0.92);
   border-radius: 24px;
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
@@ -125,6 +125,16 @@
   color: #777;
   line-height: 1.5;
 }
+
+/* ヘッダー右側（クールダウン＋タブ） */
+.header-right {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  align-items: flex-start;
+}
+
 .cooldown {
   align-self: flex-start;
   padding: 4px 10px;
@@ -134,6 +144,29 @@
   color: #4050b7;
 }
 
+.nav-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.nav-tab {
+  border-radius: 999px;
+  border: none;
+  padding: 4px 10px;
+  font-size: 11px;
+  background: #eceffd;
+  color: #555;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
+}
+.nav-tab:active {
+  transform: translateY(1px);
+}
+.nav-tab.active {
+  background: linear-gradient(135deg, #6c5ce7, #4e9fff);
+  color: #fff;
+}
+
 /* レイアウト */
 .layout {
   display: flex;
@@ -141,7 +174,7 @@
   gap: 16px;
 }
 
-/* 左パネル（スマホでは上部） */
+/* 左パネル（ガチャ） */
 .left-panel {
   display: flex;
   flex-direction: column;
@@ -260,7 +293,7 @@
   text-align: center;
 }
 
-/* 右パネル（結果） */
+/* 右パネル（開封結果） */
 .right-panel {
   background: #f7f7ff;
   border-radius: 16px;
@@ -282,14 +315,14 @@
   color: #666;
 }
 
-/* カードグリッド：スマホは2列 */
+/* 開封結果：スマホでは縦1列 */
 .result-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  display: flex;
+  flex-direction: column;
   gap: 8px;
 }
 
-/* カード共通 */
+/* ガチャカード */
 .card {
   position: relative;
   border-radius: 12px;
@@ -375,76 +408,15 @@
   color: #555;
 }
 
-/* 768px以上で横レイアウトに切り替え（PC表示） */
-@media (min-width: 768px) {
-  .app {
-    max-width: 960px;
-    padding: 20px 22px 26px;
-  }
-
-  .app-header {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-
-  .layout {
-    flex-direction: row;
-    align-items: flex-start;
-  }
-
-  .left-panel {
-    flex: 0 0 320px;
-  }
-
-  .right-panel {
-    flex: 1;
-  }
-
-  .result-grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-/* ヘッダー右側（クールダウン＋タブ） */
-.header-right {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  margin-top: 8px;
-  align-items: flex-start;
-}
-
-.nav-buttons {
-  display: flex;
-  gap: 6px;
-}
-
-.nav-tab {
-  border-radius: 999px;
-  border: none;
-  padding: 4px 10px;
-  font-size: 11px;
-  background: #eceffd;
-  color: #555;
-  cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease, transform 0.08s ease;
-}
-.nav-tab:active {
-  transform: translateY(1px);
-}
-.nav-tab.active {
-  background: linear-gradient(135deg, #6c5ce7, #4e9fff);
-  color: #fff;
-}
-
 /* 管理ページ全体 */
 .manage-page {
   background: #f7f7ff;
   border-radius: 16px;
   padding: 14px 12px 16px;
   margin-top: 8px;
+  width: 100%;
+  box-sizing: border-box;
 }
-
 .manage-header {
   margin-bottom: 12px;
 }
@@ -460,7 +432,7 @@
   line-height: 1.6;
 }
 
-/* セクション */
+/* 管理ページ セクション */
 .manage-section {
   margin-top: 12px;
 }
@@ -475,27 +447,38 @@
   color: #777;
 }
 
-/* カード一覧（縦リスト） */
+/* カード一覧（完全縦並び） */
 .manage-card-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.manage-card-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: 8px;
+.manage-card {
+  display: block;
   padding: 8px;
   border-radius: 12px;
   background: #fff;
   box-shadow: 0 3px 8px rgba(90, 103, 255, 0.08);
+  width: 100%;
+  box-sizing: border-box;
 }
 
-.manage-card-main {
-  flex: 1;
-  min-width: 0;
+/* 画像は上・横いっぱい */
+.manage-card-image {
+  margin-bottom: 6px;
+}
+.manage-card-image img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 10px;
+  object-fit: cover;
+}
+
+/* テキスト部分 */
+.manage-card-content {
+  display: block;
 }
 .manage-card-name {
   font-size: 12px;
@@ -509,6 +492,13 @@
   gap: 4px;
   margin-bottom: 4px;
 }
+.manage-card-message {
+  font-size: 11px;
+  color: #666;
+  line-height: 1.5;
+}
+
+/* バッジ類 */
 .manage-badge {
   font-size: 10px;
   padding: 2px 6px;
@@ -537,19 +527,6 @@
   color: #555;
 }
 
-.manage-card-message {
-  font-size: 11px;
-  color: #666;
-  line-height: 1.5;
-}
-
-.manage-card-thumb img {
-  width: 52px;
-  height: 52px;
-  border-radius: 8px;
-  object-fit: cover;
-}
-
 /* 将来のフォーム用プレースホルダ */
 .manage-form-placeholder {
   margin-top: 6px;
@@ -570,7 +547,7 @@
   width: 60%;
 }
 
-/* サブボタン（戻る／準備中用） */
+/* サブボタン */
 .btn-sub {
   border-radius: 999px;
   border: 1px solid #c6d0ff;
@@ -591,16 +568,113 @@
   cursor: default;
 }
 
-/* 管理ページ下部 */
 .manage-footer {
   margin-top: 14px;
 }
 
-/* PC表示時にヘッダー右寄せなど調整 */
+/* カード拡大モーダル */
+.card-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 13, 35, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 120;
+}
+
+.card-modal {
+  width: calc(100% - 40px);
+  max-width: 360px;
+  background: #fefeff;
+  border-radius: 20px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+  padding: 14px 14px 18px;
+  box-sizing: border-box;
+}
+
+.card-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.card-modal-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #333;
+}
+
+.card-modal-close {
+  border: none;
+  background: transparent;
+  font-size: 18px;
+  cursor: pointer;
+  line-height: 1;
+  color: #777;
+}
+
+.card-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.card-modal-image {
+  width: 100%;
+  border-radius: 12px;
+  object-fit: cover;
+}
+
+.card-modal-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.card-modal-message {
+  font-size: 12px;
+  color: #444;
+  line-height: 1.6;
+}
+
+/* PC表示時のレイアウト調整 */
 @media (min-width: 768px) {
+  .app {
+    max-width: 960px;
+    padding: 20px 22px 26px;
+  }
+
+  .app-header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
+
   .header-right {
     align-items: flex-end;
     margin-top: 0;
+  }
+
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+  }
+
+  .left-panel {
+    flex: 0 0 320px;
+  }
+
+  .right-panel {
+    flex: 1;
+  }
+
+  /* PCでは開封結果をグリッド表示 */
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
   }
 
   .manage-page {

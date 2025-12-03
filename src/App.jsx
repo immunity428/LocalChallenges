@@ -1,10 +1,11 @@
 // App.jsx
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import './App.css';
 import cardPool from './cards.json';
 
-const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4時間
+const COOLDOWN_MS = 30 * 1000; // 30sß
 const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
+const LONG_PRESS_MS = 500; // 長押し判定（ms）
 
 // レアリティ判定（確率）
 function rollRarity() {
@@ -37,7 +38,7 @@ function App() {
   const [cooldownLabel, setCooldownLabel] = useState('準備完了！');
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
-  // カード表示用：{ id, data, visible }
+  // ガチャ結果表示用：{ id, data, visible }
   const [cards, setCards] = useState([]);
   const [resultInfoText, setResultInfoText] =
     useState('まだほっこりカードを引いていません。');
@@ -48,8 +49,12 @@ function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // ページ切替用: 'gacha' or 'manage'
+  // ページ切替: 'gacha' or 'manage'
   const [page, setPage] = useState('gacha');
+
+  // 長押しで拡大表示用
+  const [expandedCard, setExpandedCard] = useState(null);
+  const pressTimerRef = useRef(null);
 
   // 初回のみ：localStorage から前回ガチャ時刻を復元
   useEffect(() => {
@@ -82,7 +87,6 @@ function App() {
       }
     };
 
-    // 即座に1回更新してから、1秒ごとに更新
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
@@ -97,10 +101,29 @@ function App() {
     }, 1800);
   };
 
-  // カードクリック時（将来、社内SNS投稿につなぐ想定）
+  // カードタップ時（将来SNS投稿につなぐ想定）
   const handleCardClick = (cardData) => {
     console.log('選択されたカード:', cardData);
     showToast('このカードの気持ちをタイムラインに投稿できます（将来実装予定）');
+  };
+
+  // 長押し開始
+  const handlePressStart = (cardData) => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+    }
+    pressTimerRef.current = window.setTimeout(() => {
+      setExpandedCard(cardData);
+      pressTimerRef.current = null;
+    }, LONG_PRESS_MS);
+  };
+
+  // 長押し終了（キャンセル）
+  const handlePressEnd = () => {
+    if (pressTimerRef.current) {
+      clearTimeout(pressTimerRef.current);
+      pressTimerRef.current = null;
+    }
   };
 
   // 無料ガチャを引く
@@ -130,7 +153,6 @@ function App() {
     }
     const cardList = rarities.map((rarity) => getRandomCardByRarity(rarity));
 
-    // 一旦 visible: false でセットしておく
     const baseTime = Date.now();
     const newCards = cardList.map((c, idx) => ({
       id: `${baseTime}-${idx}`,
@@ -145,7 +167,7 @@ function App() {
       setIsOpening(false);
       setPackShaking(false);
 
-      // 5枚を順番に「めくる」
+      // 5枚を順に「めくる」
       newCards.forEach((_, idx) => {
         setTimeout(() => {
           setCards((prev) =>
@@ -169,8 +191,11 @@ function App() {
       infoText.push(`${COUNT}枚のほっこりカードを開封しました。`);
       if (ssrCount > 0) infoText.push(`SSR: ${ssrCount}枚`);
       if (srCount > 0) infoText.push(`SR: ${srCount}枚`);
-      if (ssrCount === 0 && srCount === 0)
-        infoText.push(`今回はすべてRでした。また誰かをほっこりさせに行こう。`);
+      if (ssrCount === 0 && srCount === 0) {
+        infoText.push(
+          '今回はすべてRでした。また誰かをほっこりさせに行こう。'
+        );
+      }
       setResultInfoText(infoText.join(' ／ '));
 
       if (ssrCount > 0) {
@@ -243,10 +268,10 @@ function App() {
           </div>
         </header>
 
-        {/* ページ切替 */}
+        {/* ページ切り替え */}
         {page === 'gacha' ? (
           <div className='layout'>
-            {/* 左：パック & ボタン（スマホでは上側） */}
+            {/* 左：パック＆ボタン */}
             <div className='left-panel'>
               <div className='pack-area'>
                 <div
@@ -277,7 +302,7 @@ function App() {
               </div>
             </div>
 
-            {/* 右：結果表示 */}
+            {/* 右：開封結果 */}
             <div className='right-panel'>
               <div className='result-header'>
                 <div className='result-title'>開封結果</div>
@@ -316,13 +341,18 @@ function App() {
                         c.visible ? 'show' : ''
                       }`}
                       onClick={() => handleCardClick(c.data)}
+                      onMouseDown={() => handlePressStart(c.data)}
+                      onMouseUp={handlePressEnd}
+                      onMouseLeave={handlePressEnd}
+                      onTouchStart={() => handlePressStart(c.data)}
+                      onTouchEnd={handlePressEnd}
+                      onTouchCancel={handlePressEnd}
                     >
                       <div className={`card-rarity-tag ${rarityLabelClass}`}>
                         {rarityText}
                       </div>
                       <div className='card-name'>{c.data.name}</div>
                       <div className='card-body'>
-                        {/* 任意画像を JSON から読み込み */}
                         {c.data.image && (
                           <img
                             src={c.data.image}
@@ -348,15 +378,64 @@ function App() {
         ) : (
           <CardManagePage onBack={() => setPage('gacha')} />
         )}
+
+        {/* 長押しで開くカード拡大モーダル */}
+        {expandedCard && (
+          <div
+            className='card-modal-backdrop'
+            onClick={() => setExpandedCard(null)}
+          >
+            <div
+              className='card-modal'
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className='card-modal-header'>
+                <span className='card-modal-title'>{expandedCard.name}</span>
+                <button
+                  className='card-modal-close'
+                  onClick={() => setExpandedCard(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className='card-modal-body'>
+                {expandedCard.image && (
+                  <img
+                    src={expandedCard.image}
+                    alt={expandedCard.name}
+                    className='card-modal-image'
+                    draggable='false'
+                  />
+                )}
+                <div className='card-modal-meta'>
+                  <span
+                    className={`manage-badge rarity-${expandedCard.rarity}`}
+                  >
+                    {expandedCard.rarity}
+                  </span>
+                  {expandedCard.category && (
+                    <span className='manage-badge category'>
+                      {expandedCard.category}
+                    </span>
+                  )}
+                  <span className='manage-badge series'>
+                    {expandedCard.series}
+                  </span>
+                </div>
+                {expandedCard.message && (
+                  <p className='card-modal-message'>{expandedCard.message}</p>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
 /**
- * カード管理ページ（将来実装用のダミーページ）
- * - cards.json の内容を一覧表示
- * - 将来「カード作成フォーム」を載せる場所の枠だけ用意
+ * カード管理ページ（一覧のみ・将来作成機能を追加予定）
  */
 function CardManagePage({ onBack }) {
   return (
@@ -367,7 +446,7 @@ function CardManagePage({ onBack }) {
           現在はカード一覧を確認するだけの簡易ページです。
           <br />
           将来的に「新しいカードの作成・編集・削除」「カテゴリ別の管理」などを
-          ここから行えるようにする想定です。
+          ここから行える想定です。
         </p>
       </div>
 
@@ -375,8 +454,13 @@ function CardManagePage({ onBack }) {
         <h3 className='manage-section-title'>カード一覧（cards.json）</h3>
         <div className='manage-card-list'>
           {cardPool.map((card) => (
-            <div key={card.id} className='manage-card-item'>
-              <div className='manage-card-main'>
+            <div key={card.id} className='manage-card'>
+              {card.image && (
+                <div className='manage-card-image'>
+                  <img src={card.image} alt={card.name} />
+                </div>
+              )}
+              <div className='manage-card-content'>
                 <div className='manage-card-name'>{card.name}</div>
                 <div className='manage-card-meta'>
                   <span className={`manage-badge rarity-${card.rarity}`}>
@@ -393,11 +477,6 @@ function CardManagePage({ onBack }) {
                   <p className='manage-card-message'>{card.message}</p>
                 )}
               </div>
-              {card.image && (
-                <div className='manage-card-thumb'>
-                  <img src={card.image} alt={card.name} />
-                </div>
-              )}
             </div>
           ))}
         </div>
