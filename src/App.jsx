@@ -3,7 +3,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import './App.css';
 import cardPool from './cards.json';
 
-const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4時間
+const COOLDOWN_MS = 10 * 1000; // 10s
 const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
 const LONG_PRESS_MS = 500; // カード長押し判定(ms)
 
@@ -12,7 +12,7 @@ const PACKS = [
   {
     id: 'hokkori',
     name: 'ほっこりパック',
-    subtitle: '4時間に1回 無料開封',
+    subtitle: '無料開封',
     themeClass: 'pack-theme-pink',
   },
   {
@@ -269,7 +269,7 @@ function App() {
       } else if (srCount > 0) {
         showToast(`SR ${srCount}枚！次は伝説級のほっこりを狙おう。`);
       } else {
-        showToast('また4時間後のほっこりパックに期待！');
+        showToast('次のほっこりパックに期待！');
       }
 
       // クールタイム開始
@@ -303,14 +303,14 @@ function App() {
             <div className='title'>ほっこりカードガチャ</div>
             <div className='subtitle'>
               社員同士の「ありがとう」「おつかれさま」を集める
-              4時間に1回の無料ガチャ
+              ガチャ
             </div>
           </div>
 
           <div className='header-right'>
             {page === 'gacha' && (
               <div className='cooldown'>
-                次の無料開封まで: <strong>{cooldownLabel}</strong>
+                次の開封まで: <strong>{cooldownLabel}</strong>
               </div>
             )}
             <div className='nav-buttons'>
