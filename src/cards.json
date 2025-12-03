@@ -1,12 +1,21 @@
 [
   {
     "id": "lunch-trouble",
-    "name": "ラーメン",
+    "name": "青いラーメン？？",
     "rarity": "R",
     "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/ramen.png",
+    "image": "public/cards/102.jpg",
     "message": "昨日食べたラーメン青くて一見不味そうだけどめちゃくちゃ美味しかった"
+  },
+  {
+    "id": "lunch-care",
+    "name": "究極のカレー",
+    "rarity": "R",
+    "category": "食欲",
+    "series": "HOKKORI COLLECTION",
+    "image": "public/cards/102.jpg",
+    "message": "最高に美味しいカレーだった"
   },
   {
     "id": "excel-death",
