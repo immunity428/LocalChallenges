@@ -40,7 +40,7 @@ function App() {
   // カード表示用：{ id, data, visible }
   const [cards, setCards] = useState([]);
   const [resultInfoText, setResultInfoText] =
-    useState('まだガチャを引いていません。');
+    useState('まだほっこりカードを引いていません。');
 
   const [isOpening, setIsOpening] = useState(false);
   const [packShaking, setPackShaking] = useState(false);
@@ -92,6 +92,12 @@ function App() {
     setTimeout(() => {
       setToastVisible(false);
     }, 1800);
+  };
+
+  // カードクリック時（将来、社内SNS投稿につなぐ想定）
+  const handleCardClick = (cardData) => {
+    console.log('選択されたカード:', cardData);
+    showToast('このカードの気持ちをタイムラインに投稿できます（仮）');
   };
 
   // 無料ガチャを引く
@@ -157,18 +163,19 @@ function App() {
       });
 
       const infoText = [];
-      infoText.push(`${COUNT}枚開封しました。`);
+      infoText.push(`${COUNT}枚のほっこりカードを開封しました。`);
       if (ssrCount > 0) infoText.push(`SSR: ${ssrCount}枚`);
       if (srCount > 0) infoText.push(`SR: ${srCount}枚`);
-      if (ssrCount === 0 && srCount === 0) infoText.push(`すべてRでした…。`);
+      if (ssrCount === 0 && srCount === 0)
+        infoText.push(`今回はすべてRでした。また誰かをほっこりさせに行こう。`);
       setResultInfoText(infoText.join(' ／ '));
 
       if (ssrCount > 0) {
-        showToast(`SSR ${ssrCount}枚出ました！`);
+        showToast(`SSR ${ssrCount}枚！特別なほっこりが届きました。`);
       } else if (srCount > 0) {
-        showToast(`SR ${srCount}枚！ 次こそSSR…！`);
+        showToast(`SR ${srCount}枚！次は伝説級のほっこりを狙おう。`);
       } else {
-        showToast('また4時間後のパックに期待！');
+        showToast('また4時間後のほっこりパックに期待！');
       }
 
       // クールタイム開始
@@ -178,7 +185,7 @@ function App() {
   };
 
   const handlePackClick = () => {
-    showToast('4時間に1回、無料で5枚開封できます！');
+    showToast('4時間に1回、無料でほっこりカードが5枚引けます！');
   };
 
   return (
@@ -195,31 +202,34 @@ function App() {
             <span></span>
             <span></span>
           </div>
-          <div className='overlay-sub'>パックを振ってカードを整えています</div>
+          <div className='overlay-sub'>
+            パックをふわふわ振って、ほっこりカードを整えています
+          </div>
         </div>
 
         {/* ヘッダー */}
         <header className='app-header'>
           <div className='title-block'>
-            <div className='title'>FREE STAR PACK</div>
+            <div className='title'>ほっこりカードガチャ</div>
             <div className='subtitle'>
-              4時間に1回 引ける ポケポケ風無料ガチャ
+              社員同士の「ありがとう」「おつかれさま」を集める
+              4時間に1回の無料ガチャ
             </div>
           </div>
           <div className='cooldown'>
-            次の無料まで: <strong>{cooldownLabel}</strong>
+            次の無料開封まで: <strong>{cooldownLabel}</strong>
           </div>
         </header>
 
         <div className='layout'>
-          {/* 左：パック & ボタン */}
+          {/* 左：パック & ボタン（スマホでは上側） */}
           <div className='left-panel'>
             <div className='pack-area'>
               <div
                 className={`pack ${packShaking ? 'shake' : ''}`}
                 onClick={handlePackClick}
               >
-                <div className='pack-label'>FREE PACK</div>
+                <div className='pack-label'>ほっこりパック</div>
                 <div className='pack-orb'></div>
                 <div className='pack-sub'>4時間に1回 無料開封</div>
               </div>
@@ -232,14 +242,14 @@ function App() {
                 onClick={handleGacha}
                 disabled={buttonDisabled || isOpening}
               >
-                無料ガチャを引く（1回5枚）
+                無料でほっこりカードを引く（5枚）
               </button>
             </div>
 
             <div className='odds-text'>
               ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
               <br />
-              1回の開封でカード5枚排出
+              1回の開封でほっこりカード5枚排出
             </div>
           </div>
 
@@ -279,6 +289,7 @@ function App() {
                   <div
                     key={c.id}
                     className={`card ${rarityClass} ${c.visible ? 'show' : ''}`}
+                    onClick={() => handleCardClick(c.data)}
                   >
                     <div className={`card-rarity-tag ${rarityLabelClass}`}>
                       {rarityText}
@@ -294,9 +305,12 @@ function App() {
                           draggable='false'
                         />
                       )}
+                      {c.data.message && (
+                        <p className='card-message'>{c.data.message}</p>
+                      )}
                     </div>
                     <div className='card-footer'>
-                      <span>{c.data.type}</span>
+                      <span>{c.data.category || c.data.type}</span>
                       <span>{c.data.series}</span>
                     </div>
                   </div>

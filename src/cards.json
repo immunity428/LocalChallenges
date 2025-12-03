@@ -1,60 +1,47 @@
 [
   {
-    "id": "asteria-dragon",
-    "name": "星降るドラゴン・アステリア",
-    "rarity": "SSR",
-    "type": "ドラゴン",
-    "series": "COSMIC LEGENDS",
-    "image": "/cards/S__97222675_0.jpg"
-  },
-  {
-    "id": "phoenix-time",
-    "name": "時空を裂くフェニックス",
-    "rarity": "SSR",
-    "type": "ビースト",
-    "series": "COSMIC LEGENDS",
-    "image": "/cards/S__97222674_0.jpg"
-  },
-  {
-    "id": "zero-magician",
-    "name": "ゼロポイント・マジシャン",
-    "rarity": "SSR",
-    "type": "マジシャン",
-    "series": "ARCANE CHRONICLE",
-    "image": "/cards/S__97222673_0.jpg"
-  },
-
-  {
-    "id": "raiger",
-    "name": "雷鳴のライガー",
+    "id": "thanks-teamwork",
+    "name": "チームワークありがとうカード",
     "rarity": "SR",
-    "type": "ビースト",
-    "series": "STORM EDGE",
-    "image": "/cards/S__97222669_0.jpg"
+    "category": "ありがとう",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/thanks_team.png",
+    "message": "今日もチームで助け合えたね！このカードをきっかけに『ありがとう』を一言そえてみよう。"
   },
   {
-    "id": "sea-pegasus",
-    "name": "深淵のシーペガサス",
+    "id": "coffee-break",
+    "name": "いっしょにコーヒーブレイク",
+    "rarity": "R",
+    "category": "休憩のお誘い",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/coffee.png",
+    "message": "「おつかれさま、ちょっと一息つきませんか？」を伝えるカード。気になる人にそっと送ってみよう。"
+  },
+  {
+    "id": "good-job",
+    "name": "グッジョブ！カード",
     "rarity": "SR",
-    "type": "ドラゴン",
-    "series": "OCEAN ABYSS",
-    "image": "/cards/S__97222670_0.jpg"
-  },
-
-  {
-    "id": "fire-lizard",
-    "name": "炎のトカゲ",
-    "rarity": "R",
-    "type": "ビースト",
-    "series": "BASIC PACK",
-    "image": "/cards/S__97222668_0.jpg"
+    "category": "称賛",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/good_job.png",
+    "message": "誰かのがんばりを見つけたら、このカードで気軽に『ナイス！』を届けよう。"
   },
   {
-    "id": "apprentice-mage",
-    "name": "見習い魔法使い",
+    "id": "welcome-newcomer",
+    "name": "ようこそカード",
+    "rarity": "SSR",
+    "category": "歓迎",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/welcome.png",
+    "message": "新しく仲間になった人へ。自己紹介と一緒にこのカードを添えて、最初の一歩をほっこりに。"
+  },
+  {
+    "id": "thanks-small-help",
+    "name": "ちょっとした助けに感謝",
     "rarity": "R",
-    "type": "マジシャン",
-    "series": "BASIC PACK",
-    "image": "/cards/S__97222671_0.jpg"
+    "category": "ありがとう",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/small_help.png",
+    "message": "「あの一言、助かりました！」そんな小さな感謝を伝えるためのカード。"
   }
 ]
