@@ -3,9 +3,31 @@ import React, { useEffect, useState, useRef } from 'react';
 import './App.css';
 import cardPool from './cards.json';
 
-const COOLDOWN_MS = 30 * 1000; // 30sß
+const COOLDOWN_MS = 4 * 60 * 60 * 1000; // 4時間
 const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
-const LONG_PRESS_MS = 500; // 長押し判定（ms）
+const LONG_PRESS_MS = 500; // カード長押し判定(ms)
+
+// スワイプで切り替えるパック定義（今は見た目だけ・中身は同じガチャ）
+const PACKS = [
+  {
+    id: 'hokkori',
+    name: 'ほっこりパック',
+    subtitle: '4時間に1回 無料開封',
+    themeClass: 'pack-theme-pink',
+  },
+  {
+    id: 'cheer',
+    name: 'チアアップパック',
+    subtitle: 'ねぎらいメッセージ多め',
+    themeClass: 'pack-theme-blue',
+  },
+  {
+    id: 'welcome',
+    name: 'ウェルカムパック',
+    subtitle: '新メンバー歓迎カード',
+    themeClass: 'pack-theme-green',
+  },
+];
 
 // レアリティ判定（確率）
 function rollRarity() {
@@ -52,9 +74,14 @@ function App() {
   // ページ切替: 'gacha' or 'manage'
   const [page, setPage] = useState('gacha');
 
-  // 長押しで拡大表示用
+  // 長押しでカード拡大
   const [expandedCard, setExpandedCard] = useState(null);
   const pressTimerRef = useRef(null);
+
+  // パックカルーセル
+  const [activePackIndex, setActivePackIndex] = useState(0);
+  const touchStartXRef = useRef(null);
+  const activePack = PACKS[activePackIndex];
 
   // 初回のみ：localStorage から前回ガチャ時刻を復元
   useEffect(() => {
@@ -126,6 +153,43 @@ function App() {
     }
   };
 
+  // パック説明（中央パックをタップ）
+  const handlePackClick = () => {
+    showToast(`${activePack.name}：4時間に1回、無料で5枚開封できます！`);
+  };
+
+  // パックを前後に切り替え
+  const changePack = (delta) => {
+    setActivePackIndex((prev) => {
+      const len = PACKS.length;
+      return (prev + delta + len) % len;
+    });
+  };
+
+  // カルーセルのスワイプ開始
+  const handleCarouselTouchStart = (e) => {
+    if (e.touches && e.touches.length > 0) {
+      touchStartXRef.current = e.touches[0].clientX;
+    }
+  };
+
+  // カルーセルのスワイプ終了
+  const handleCarouselTouchEnd = (e) => {
+    if (touchStartXRef.current == null) return;
+    const endX =
+      e.changedTouches && e.changedTouches.length > 0
+        ? e.changedTouches[0].clientX
+        : touchStartXRef.current;
+    const dx = endX - touchStartXRef.current;
+    const threshold = 40; // スワイプ判定
+    if (dx > threshold) {
+      changePack(-1); // 右スワイプで前のパック
+    } else if (dx < -threshold) {
+      changePack(1); // 左スワイプで次のパック
+    }
+    touchStartXRef.current = null;
+  };
+
   // 無料ガチャを引く
   const handleGacha = () => {
     const now = Date.now();
@@ -188,7 +252,9 @@ function App() {
       });
 
       const infoText = [];
-      infoText.push(`${COUNT}枚のほっこりカードを開封しました。`);
+      infoText.push(
+        `${activePack.name}から ${COUNT}枚のほっこりカードを開封しました。`
+      );
       if (ssrCount > 0) infoText.push(`SSR: ${ssrCount}枚`);
       if (srCount > 0) infoText.push(`SR: ${srCount}枚`);
       if (ssrCount === 0 && srCount === 0) {
@@ -210,10 +276,6 @@ function App() {
       setLastGachaTime(now);
       window.localStorage.setItem(STORAGE_KEY_LAST_TIME, String(now));
     }, animationDuration);
-  };
-
-  const handlePackClick = () => {
-    showToast('ほっこりカードが5枚引けます！');
   };
 
   return (
@@ -241,7 +303,7 @@ function App() {
             <div className='title'>ほっこりカードガチャ</div>
             <div className='subtitle'>
               社員同士の「ありがとう」「おつかれさま」を集める
-              ガチャ
+              4時間に1回の無料ガチャ
             </div>
           </div>
 
@@ -275,14 +337,48 @@ function App() {
             <div className='left-panel'>
               <div className='pack-area'>
                 <div
-                  className={`pack ${packShaking ? 'shake' : ''}`}
-                  onClick={handlePackClick}
+                  className='pack-carousel'
+                  onTouchStart={handleCarouselTouchStart}
+                  onTouchEnd={handleCarouselTouchEnd}
                 >
-                  <div className='pack-label'>ほっこりパック</div>
-                  <div className='pack-orb'></div>
-                  <div className='pack-sub'>4時間に1回 無料開封</div>
+                  {PACKS.map((pack, idx) => {
+                    const offset = idx - activePackIndex;
+                    let posClass = 'pack-pos-hidden';
+                    if (offset === 0) posClass = 'pack-pos-center';
+                    else if (offset === -1 || offset === PACKS.length - 1)
+                      posClass = 'pack-pos-left';
+                    else if (offset === 1 || offset === -(PACKS.length - 1))
+                      posClass = 'pack-pos-right';
+
+                    const isCenter = offset === 0;
+
+                    return (
+                      <div
+                        key={pack.id}
+                        className={`pack-card ${posClass}`}
+                        onClick={() => {
+                          if (isCenter) {
+                            handlePackClick();
+                          } else {
+                            setActivePackIndex(idx);
+                          }
+                        }}
+                      >
+                        <div
+                          className={`pack ${pack.themeClass} ${
+                            packShaking && isCenter ? 'shake' : ''
+                          }`}
+                        >
+                          <div className='pack-label'>{pack.name}</div>
+                          <div className='pack-sub'>{pack.subtitle}</div>
+                          <div className='pack-orb'></div>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
                 <div className='pack-glow'></div>
+                <div className='pack-hint'>左右にスワイプしてパックを切り替え</div>
               </div>
 
               <div className='buttons'>
@@ -291,7 +387,7 @@ function App() {
                   onClick={handleGacha}
                   disabled={buttonDisabled || isOpening}
                 >
-                  無料でほっこりカードを引く（5枚）
+                  {activePack.name}を開封する（5枚）
                 </button>
               </div>
 
