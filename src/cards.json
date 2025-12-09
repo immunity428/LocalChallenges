@@ -24,7 +24,7 @@
     "category": "悲劇",
     "series": "HOKKORI COLLECTION",
     "image": "/cards/104.jpg",
-    "message": "いいところまで入力したのに「応答なし」になった時の絶望感よ。保存してない。帰りたい。"
+    "message": "いいところまで入力したのに画面が真っ青.....帰りたい.........."
   },
   {
     "id": "ac-war",
@@ -32,7 +32,7 @@
     "rarity": "R",
     "category": "環境",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/aircon.png",
+    "image": "/cards/106.jpg",
     "message": "オフィスの空調、26度だと寒いし27度だと暑い。この1度の差に俺たちは翻弄されている。"
   },
   {
@@ -50,7 +50,7 @@
     "rarity": "R",
     "category": "失敗",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/typo.png",
+    "image": "/cards/105.png",
     "message": "「お疲れ様です」を「お憑かれ様です」って打って送信しかけた。危うく呪うところだった。"
   }
 ]
