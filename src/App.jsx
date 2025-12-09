@@ -1,13 +1,14 @@
 // App.jsx
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import './App.css';
 import cardPool from './cards.json';
 
-const COOLDOWN_MS = 10 * 1000; // 10s
+const COOLDOWN_MS = 10 * 1000; // 10s（本番では4hなどに変更）
 const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
-const LONG_PRESS_MS = 500; // カード長押し判定(ms)
+const STORAGE_KEY_OWNED = 'hokkoriOwnedCards';
+const LONG_PRESS_MS = 500;
 
-// スワイプで切り替えるパック定義（今は見た目だけ・中身は同じガチャ）
+// パック定義
 const PACKS = [
   {
     id: 'hokkori',
@@ -29,15 +30,15 @@ const PACKS = [
   },
 ];
 
-// レアリティ判定（確率）
+// レアリティ判定
 function rollRarity() {
   const r = Math.random();
-  if (r < 0.05) return 'SSR'; // 5%
-  if (r < 0.05 + 0.15) return 'SR'; // 15%
-  return 'R'; // 80%
+  if (r < 0.05) return 'SSR';
+  if (r < 0.05 + 0.15) return 'SR';
+  return 'R';
 }
 
-// レアリティごとにランダムで1枚
+// レアリティごとにランダム1枚
 function getRandomCardByRarity(rarity) {
   const candidates = cardPool.filter((c) => c.rarity === rarity);
   if (!candidates.length) return null;
@@ -45,7 +46,7 @@ function getRandomCardByRarity(rarity) {
   return candidates[idx];
 }
 
-// 残り時間の表示フォーマット
+// 残り時間表示
 function formatTime(ms) {
   const totalSeconds = Math.max(0, Math.floor(ms / 1000));
   const h = Math.floor(totalSeconds / 3600);
@@ -60,7 +61,7 @@ function App() {
   const [cooldownLabel, setCooldownLabel] = useState('準備完了！');
   const [buttonDisabled, setButtonDisabled] = useState(false);
 
-  // ガチャ結果表示用：{ id, data, visible }
+  // ガチャ結果表示用
   const [cards, setCards] = useState([]);
   const [resultInfoText, setResultInfoText] =
     useState('まだほっこりカードを引いていません。');
@@ -71,10 +72,10 @@ function App() {
   const [toastMsg, setToastMsg] = useState('');
   const [toastVisible, setToastVisible] = useState(false);
 
-  // ページ切替: 'gacha' or 'manage'
+  // page: 'gacha' | 'manage' | 'admin'
   const [page, setPage] = useState('gacha');
 
-  // 長押しでカード拡大
+  // 長押し拡大
   const [expandedCard, setExpandedCard] = useState(null);
   const pressTimerRef = useRef(null);
 
@@ -83,18 +84,33 @@ function App() {
   const touchStartXRef = useRef(null);
   const activePack = PACKS[activePackIndex];
 
-  // 初回のみ：localStorage から前回ガチャ時刻を復元
+  // 所持カード（[{ cardId, obtainedAt }]）
+  const [ownedCards, setOwnedCards] = useState([]);
+
+  // 秘密のクリック（タイトル5回でadmin）
+  const [secretClicks, setSecretClicks] = useState(0);
+  const secretTimerRef = useRef(null);
+
+  // 初回：localStorage復元
   useEffect(() => {
     const stored = window.localStorage.getItem(STORAGE_KEY_LAST_TIME);
     if (stored) {
       const parsed = Number(stored);
-      if (!Number.isNaN(parsed)) {
-        setLastGachaTime(parsed);
+      if (!Number.isNaN(parsed)) setLastGachaTime(parsed);
+    }
+
+    const storedOwned = window.localStorage.getItem(STORAGE_KEY_OWNED);
+    if (storedOwned) {
+      try {
+        const parsed = JSON.parse(storedOwned);
+        if (Array.isArray(parsed)) setOwnedCards(parsed);
+      } catch (e) {
+        console.error('Failed to parse owned cards', e);
       }
     }
   }, []);
 
-  // クールタイム表示とボタン制御
+  // クールタイム管理
   useEffect(() => {
     const tick = () => {
       const now = Date.now();
@@ -119,33 +135,43 @@ function App() {
     return () => clearInterval(id);
   }, [lastGachaTime]);
 
-  // トースト表示
+  // トースト
   const showToast = (message) => {
     setToastMsg(message);
     setToastVisible(true);
-    setTimeout(() => {
-      setToastVisible(false);
-    }, 1800);
+    setTimeout(() => setToastVisible(false), 1800);
   };
 
-  // カードタップ時（将来SNS投稿につなぐ想定）
+  // 所持カード追加
+  const addOwnedCards = (cardList) => {
+    const now = Date.now();
+    const newEntries = cardList
+      .filter(Boolean)
+      .map((card) => ({ cardId: card.id, obtainedAt: now }));
+    if (newEntries.length === 0) return;
+
+    setOwnedCards((prev) => {
+      const updated = [...prev, ...newEntries];
+      window.localStorage.setItem(STORAGE_KEY_OWNED, JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // カードタップ
   const handleCardClick = (cardData) => {
     console.log('選択されたカード:', cardData);
     showToast('このカードの気持ちをタイムラインに投稿できます（将来実装予定）');
   };
 
-  // 長押し開始
+  // 長押し
   const handlePressStart = (cardData) => {
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-    }
+    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
     pressTimerRef.current = window.setTimeout(() => {
       setExpandedCard(cardData);
       pressTimerRef.current = null;
     }, LONG_PRESS_MS);
   };
 
-  // 長押し終了（キャンセル）
   const handlePressEnd = () => {
     if (pressTimerRef.current) {
       clearTimeout(pressTimerRef.current);
@@ -153,12 +179,12 @@ function App() {
     }
   };
 
-  // パック説明（中央パックをタップ）
+  // パック説明
   const handlePackClick = () => {
-    showToast(`${activePack.name}：4時間に1回、無料で5枚開封できます！`);
+    showToast(`${activePack.name}：パックを開けてカードを手に入れよう！`);
   };
 
-  // パックを前後に切り替え
+  // パック切替
   const changePack = (delta) => {
     setActivePackIndex((prev) => {
       const len = PACKS.length;
@@ -166,14 +192,13 @@ function App() {
     });
   };
 
-  // カルーセルのスワイプ開始
+  // カルーセルスワイプ
   const handleCarouselTouchStart = (e) => {
     if (e.touches && e.touches.length > 0) {
       touchStartXRef.current = e.touches[0].clientX;
     }
   };
 
-  // カルーセルのスワイプ終了
   const handleCarouselTouchEnd = (e) => {
     if (touchStartXRef.current == null) return;
     const endX =
@@ -181,20 +206,16 @@ function App() {
         ? e.changedTouches[0].clientX
         : touchStartXRef.current;
     const dx = endX - touchStartXRef.current;
-    const threshold = 40; // スワイプ判定
-    if (dx > threshold) {
-      changePack(-1); // 右スワイプで前のパック
-    } else if (dx < -threshold) {
-      changePack(1); // 左スワイプで次のパック
-    }
+    const threshold = 40;
+    if (dx > threshold) changePack(-1);
+    else if (dx < -threshold) changePack(1);
     touchStartXRef.current = null;
   };
 
-  // 無料ガチャを引く
+  // ガチャ
   const handleGacha = () => {
     const now = Date.now();
 
-    // クールタイムチェック
     if (lastGachaTime != null) {
       const elapsed = now - lastGachaTime;
       const remain = COOLDOWN_MS - elapsed;
@@ -204,7 +225,6 @@ function App() {
       }
     }
 
-    // 演出開始
     setIsOpening(true);
     setPackShaking(true);
     setButtonDisabled(true);
@@ -212,9 +232,7 @@ function App() {
 
     const COUNT = 5;
     const rarities = [];
-    for (let i = 0; i < COUNT; i++) {
-      rarities.push(rollRarity());
-    }
+    for (let i = 0; i < COUNT; i++) rarities.push(rollRarity());
     const cardList = rarities.map((rarity) => getRandomCardByRarity(rarity));
 
     const baseTime = Date.now();
@@ -231,18 +249,18 @@ function App() {
       setIsOpening(false);
       setPackShaking(false);
 
-      // 5枚を順に「めくる」
       newCards.forEach((_, idx) => {
-        setTimeout(() => {
-          setCards((prev) =>
-            prev.map((card, i) =>
-              i === idx ? { ...card, visible: true } : card
-            )
-          );
-        }, 200 + idx * 120);
+        setTimeout(
+          () =>
+            setCards((prev) =>
+              prev.map((card, i) =>
+                i === idx ? { ...card, visible: true } : card
+              )
+            ),
+          200 + idx * 120
+        );
       });
 
-      // 結果集計
       let ssrCount = 0;
       let srCount = 0;
       cardList.forEach((card) => {
@@ -258,9 +276,7 @@ function App() {
       if (ssrCount > 0) infoText.push(`SSR: ${ssrCount}枚`);
       if (srCount > 0) infoText.push(`SR: ${srCount}枚`);
       if (ssrCount === 0 && srCount === 0) {
-        infoText.push(
-          '今回はすべてRでした。また誰かをほっこりさせに行こう。'
-        );
+        infoText.push('今回はすべてRでした。また誰かをほっこりさせに行こう。');
       }
       setResultInfoText(infoText.join(' ／ '));
 
@@ -272,10 +288,36 @@ function App() {
         showToast('次のほっこりパックに期待！');
       }
 
-      // クールタイム開始
+      // 所持カードに保存
+      addOwnedCards(cardList);
+
       setLastGachaTime(now);
       window.localStorage.setItem(STORAGE_KEY_LAST_TIME, String(now));
     }, animationDuration);
+  };
+
+  // タイトル秘密クリック（2秒以内に5回）
+  const handleSecretTitleClick = () => {
+    if (!secretTimerRef.current) {
+      secretTimerRef.current = setTimeout(() => {
+        setSecretClicks(0);
+        secretTimerRef.current = null;
+      }, 2000);
+    }
+    setSecretClicks((prev) => {
+      const next = prev + 1;
+      if (next >= 5) {
+        // 秘密ページへ
+        setPage('admin');
+        setSecretClicks(0);
+        if (secretTimerRef.current) {
+          clearTimeout(secretTimerRef.current);
+          secretTimerRef.current = null;
+        }
+        showToast('管理者ページを開きました');
+      }
+      return next;
+    });
   };
 
   return (
@@ -300,11 +342,15 @@ function App() {
         {/* ヘッダー */}
         <header className='app-header'>
           <div className='title-block'>
-            <div className='title'>ほっこりカードガチャ</div>
-            <div className='subtitle'>
-              社員同士の「ありがとう」「おつかれさま」を集める
-              ガチャ
+            <div className='title' onClick={handleSecretTitleClick}>
+              ほっこりカードガチャ
             </div>
+            <div className='subtitle'>
+              社員同士の「ありがとう」「おつかれさま」を集める ガチャ
+            </div>
+            {page === 'admin' && (
+              <div className='admin-indicator'>管理者ビュー</div>
+            )}
           </div>
 
           <div className='header-right'>
@@ -326,12 +372,13 @@ function App() {
               >
                 カード管理
               </button>
+              {/* admin へのタブは表示しない（隠し機能） */}
             </div>
           </div>
         </header>
 
-        {/* ページ切り替え */}
-        {page === 'gacha' ? (
+        {/* ページ切替 */}
+        {page === 'gacha' && (
           <div className='layout'>
             {/* 左：パック＆ボタン */}
             <div className='left-panel'>
@@ -357,11 +404,8 @@ function App() {
                         key={pack.id}
                         className={`pack-card ${posClass}`}
                         onClick={() => {
-                          if (isCenter) {
-                            handlePackClick();
-                          } else {
-                            setActivePackIndex(idx);
-                          }
+                          if (isCenter) handlePackClick();
+                          else setActivePackIndex(idx);
                         }}
                       >
                         <div
@@ -378,7 +422,9 @@ function App() {
                   })}
                 </div>
                 <div className='pack-glow'></div>
-                <div className='pack-hint'>左右にスワイプしてパックを切り替え</div>
+                <div className='pack-hint'>
+                  左右にスワイプしてパックを切り替え
+                </div>
               </div>
 
               <div className='buttons'>
@@ -471,20 +517,26 @@ function App() {
               </div>
             </div>
           </div>
-        ) : (
-          <CardManagePage onBack={() => setPage('gacha')} />
         )}
 
-        {/* 長押しで開くカード拡大モーダル */}
+        {page === 'manage' && (
+          <CardManagePage
+            onBack={() => setPage('gacha')}
+            ownedCards={ownedCards}
+          />
+        )}
+
+        {page === 'admin' && (
+          <AdminCardListPage onBack={() => setPage('gacha')} />
+        )}
+
+        {/* 長押しモーダル */}
         {expandedCard && (
           <div
             className='card-modal-backdrop'
             onClick={() => setExpandedCard(null)}
           >
-            <div
-              className='card-modal'
-              onClick={(e) => e.stopPropagation()}
-            >
+            <div className='card-modal' onClick={(e) => e.stopPropagation()}>
               <div className='card-modal-header'>
                 <span className='card-modal-title'>{expandedCard.name}</span>
                 <button
@@ -531,23 +583,129 @@ function App() {
 }
 
 /**
- * カード管理ページ（一覧のみ・将来作成機能を追加予定）
+ * カード管理ページ（ユーザーの所持コレクション）
  */
-function CardManagePage({ onBack }) {
+function CardManagePage({ onBack, ownedCards }) {
+  const summarized = useMemo(() => {
+    const map = new Map();
+    ownedCards.forEach(({ cardId, obtainedAt }) => {
+      const current = map.get(cardId) || {
+        cardId,
+        count: 0,
+        lastObtained: 0,
+      };
+      current.count += 1;
+      if (obtainedAt > current.lastObtained) current.lastObtained = obtainedAt;
+      map.set(cardId, current);
+    });
+
+    const result = [];
+    map.forEach((v) => {
+      const cardDef = cardPool.find((c) => c.id === v.cardId);
+      if (!cardDef) return;
+      result.push({ ...v, card: cardDef });
+    });
+
+    const rarityOrder = { SSR: 0, SR: 1, R: 2 };
+    result.sort((a, b) => {
+      const ra = rarityOrder[a.card.rarity] ?? 99;
+      const rb = rarityOrder[b.card.rarity] ?? 99;
+      if (ra !== rb) return ra - rb;
+      return String(a.card.name).localeCompare(String(b.card.name), 'ja');
+    });
+
+    return result;
+  }, [ownedCards]);
+
   return (
     <div className='manage-page'>
       <div className='manage-header'>
-        <h2 className='manage-title'>ほっこりカード管理（β / 将来実装予定）</h2>
+        <h2 className='manage-title'>ほっこりカードコレクション</h2>
         <p className='manage-desc'>
-          現在はカード一覧を確認するだけの簡易ページです。
+          これまでガチャで手に入れたカードの保管場所です。
           <br />
-          将来的に「新しいカードの作成・編集・削除」「カテゴリ別の管理」などを
-          ここから行える想定です。
+          同じカードを複数枚引いた場合は「所持枚数」としてカウントされます。
         </p>
       </div>
 
       <div className='manage-section'>
-        <h3 className='manage-section-title'>カード一覧（cards.json）</h3>
+        <h3 className='manage-section-title'>所持カード一覧</h3>
+        {summarized.length === 0 ? (
+          <p className='manage-desc-small'>
+            まだカードを所持していません。ガチャでカードを集めましょう！
+          </p>
+        ) : (
+          <div className='manage-card-list'>
+            {summarized.map(({ cardId, count, lastObtained, card }) => (
+              <div key={cardId} className='manage-card'>
+                {card.image && (
+                  <div className='manage-card-image'>
+                    <img src={card.image} alt={card.name} />
+                  </div>
+                )}
+                <div className='manage-card-content'>
+                  <div className='manage-card-name'>
+                    {card.name}
+                    <span className='manage-card-count'> × {count}</span>
+                  </div>
+                  <div className='manage-card-meta'>
+                    <span className={`manage-badge rarity-${card.rarity}`}>
+                      {card.rarity}
+                    </span>
+                    {card.category && (
+                      <span className='manage-badge category'>
+                        {card.category}
+                      </span>
+                    )}
+                    <span className='manage-badge series'>{card.series}</span>
+                  </div>
+                  {card.message && (
+                    <p className='manage-card-message'>{card.message}</p>
+                  )}
+                  <div className='manage-card-footnote'>
+                    最終入手:{' '}
+                    {new Date(lastObtained).toLocaleString('ja-JP', {
+                      year: 'numeric',
+                      month: '2-digit',
+                      day: '2-digit',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className='manage-footer'>
+        <button className='btn-sub' onClick={onBack}>
+          ガチャ画面に戻る
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * 管理者向け：全カード一覧（cards.json）
+ * タイトル5回クリックで表示
+ */
+function AdminCardListPage({ onBack }) {
+  return (
+    <div className='manage-page'>
+      <div className='manage-header'>
+        <h2 className='manage-title'>管理者用カード一覧</h2>
+        <p className='manage-desc'>
+          cards.json に定義されている全ての排出対象カードの一覧です。
+          <br />
+          レアリティやカテゴリのバランス確認などに使用します。
+        </p>
+      </div>
+
+      <div className='manage-section'>
+        <h3 className='manage-section-title'>全カード（マスタ）</h3>
         <div className='manage-card-list'>
           {cardPool.map((card) => (
             <div key={card.id} className='manage-card'>
@@ -557,7 +715,12 @@ function CardManagePage({ onBack }) {
                 </div>
               )}
               <div className='manage-card-content'>
-                <div className='manage-card-name'>{card.name}</div>
+                <div className='manage-card-name'>
+                  {card.name}
+                  <span className='manage-card-count admin-id'>
+                    （ID: {card.id}）
+                  </span>
+                </div>
                 <div className='manage-card-meta'>
                   <span className={`manage-badge rarity-${card.rarity}`}>
                     {card.rarity}
@@ -575,22 +738,6 @@ function CardManagePage({ onBack }) {
               </div>
             </div>
           ))}
-        </div>
-      </div>
-
-      <div className='manage-section'>
-        <h3 className='manage-section-title'>新しいカードを作成（準備中）</h3>
-        <p className='manage-desc-small'>
-          ここに「カード名・レアリティ・カテゴリ・メッセージ・画像」などを入力するフォームを
-          将来的に実装予定です。
-        </p>
-        <div className='manage-form-placeholder'>
-          <div className='placeholder-row' />
-          <div className='placeholder-row' />
-          <div className='placeholder-row short' />
-          <button className='btn-sub' disabled>
-            作成機能はまだ利用できません
-          </button>
         </div>
       </div>
 
