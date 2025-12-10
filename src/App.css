@@ -979,3 +979,167 @@
   }
 }
 
+/* ログイン画面 */
+.login-page {
+  max-width: 420px;
+  margin: 40px auto;
+  padding: 24px 20px 28px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.08);
+}
+
+.login-title {
+  font-size: 1.3rem;
+  font-weight: 700;
+  margin-bottom: 4px;
+  text-align: center;
+}
+
+.login-subtitle {
+  font-size: 0.9rem;
+  text-align: center;
+  margin-bottom: 16px;
+  color: #666;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.login-label {
+  font-size: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.login-input {
+  border-radius: 999px;
+  border: 1px solid #ddd;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+}
+
+.login-input:focus {
+  outline: none;
+  border-color: #ff82b4;
+  box-shadow: 0 0 0 2px rgba(255, 130, 180, 0.25);
+}
+
+.login-error {
+  font-size: 0.8rem;
+  color: #d9534f;
+  margin-top: 4px;
+}
+
+.login-button {
+  margin-top: 8px;
+  width: 100%;
+}
+
+/* ログアウトタブ */
+.logout-tab {
+  opacity: 0.8;
+}
+
+/* 返信モーダル用 */
+.original-message {
+  background: #fff6fb;
+  border-radius: 12px;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  margin-bottom: 12px;
+}
+
+.reply-list {
+  margin-bottom: 12px;
+}
+
+.reply-list-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+.reply-empty {
+  font-size: 0.8rem;
+  color: #777;
+}
+
+.reply-items {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+.reply-item {
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: #f7f7ff;
+  font-size: 0.85rem;
+  margin-bottom: 6px;
+}
+
+.reply-text {
+  white-space: pre-wrap;
+}
+
+.reply-meta {
+  font-size: 0.7rem;
+  color: #777;
+  margin-top: 2px;
+  text-align: right;
+}
+
+.reply-form {
+  margin-top: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.reply-textarea {
+  min-height: 72px;
+  border-radius: 10px;
+  border: 1px solid #ddd;
+  padding: 8px 10px;
+  font-size: 0.9rem;
+  resize: vertical;
+}
+
+.reply-textarea:focus {
+  outline: none;
+  border-color: #ff82b4;
+  box-shadow: 0 0 0 2px rgba(255, 130, 180, 0.25);
+}
+
+.reply-button {
+  align-self: flex-end;
+  padding-inline: 16px;
+}
+
+/* ページ切り替えアニメーション用 */
+.page-container {
+  position: relative;
+  width: 100%;
+}
+
+.page-container.page-switch {
+  animation: pageFadeIn 0.28s ease-out;
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateX(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}

@@ -6,7 +6,14 @@ import cardPool from './cards.json';
 const COOLDOWN_MS = 10 * 1000; // 10s（本番では4hなどに変更）
 const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
 const STORAGE_KEY_OWNED = 'hokkoriOwnedCards';
+const STORAGE_KEY_REPLIES = 'hokkoriCardReplies';
+const STORAGE_KEY_AUTH = 'hokkoriLoginAuth';
+
 const LONG_PRESS_MS = 500;
+
+// ログイン情報
+const VALID_USER = 'User';
+const VALID_PASSWORD = 'Suwarika';
 
 // パック定義
 const PACKS = [
@@ -57,6 +64,12 @@ function formatTime(ms) {
 }
 
 function App() {
+  // ログイン状態
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [loginUser, setLoginUser] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [loginError, setLoginError] = useState('');
+
   const [lastGachaTime, setLastGachaTime] = useState(null);
   const [cooldownLabel, setCooldownLabel] = useState('準備完了！');
   const [buttonDisabled, setButtonDisabled] = useState(false);
@@ -75,9 +88,17 @@ function App() {
   // page: 'gacha' | 'manage' | 'admin'
   const [page, setPage] = useState('gacha');
 
-  // 長押し拡大
+  // ページ切り替えアニメーション用
+  const [pageAnimClass, setPageAnimClass] = useState('');
+
+  // 長押し拡大用
   const [expandedCard, setExpandedCard] = useState(null);
   const pressTimerRef = useRef(null);
+
+  // 返信モーダル用
+  const [replyTargetCard, setReplyTargetCard] = useState(null);
+  const [replyText, setReplyText] = useState('');
+  const [cardReplies, setCardReplies] = useState({}); // { [cardId]: [{ text, createdAt }, ...] }
 
   // パックカルーセル
   const [activePackIndex, setActivePackIndex] = useState(0);
@@ -93,6 +114,11 @@ function App() {
 
   // 初回：localStorage復元
   useEffect(() => {
+    const storedAuth = window.localStorage.getItem(STORAGE_KEY_AUTH);
+    if (storedAuth === '1') {
+      setIsAuthenticated(true);
+    }
+
     const stored = window.localStorage.getItem(STORAGE_KEY_LAST_TIME);
     if (stored) {
       const parsed = Number(stored);
@@ -106,6 +132,18 @@ function App() {
         if (Array.isArray(parsed)) setOwnedCards(parsed);
       } catch (e) {
         console.error('Failed to parse owned cards', e);
+      }
+    }
+
+    const storedReplies = window.localStorage.getItem(STORAGE_KEY_REPLIES);
+    if (storedReplies) {
+      try {
+        const parsed = JSON.parse(storedReplies);
+        if (parsed && typeof parsed === 'object') {
+          setCardReplies(parsed);
+        }
+      } catch (e) {
+        console.error('Failed to parse card replies', e);
       }
     }
   }, []);
@@ -135,6 +173,15 @@ function App() {
     return () => clearInterval(id);
   }, [lastGachaTime]);
 
+  // ページが変わるたびにアニメーション用クラスを付ける
+  useEffect(() => {
+    setPageAnimClass('page-switch');
+    const timer = setTimeout(() => {
+      setPageAnimClass('');
+    }, 320); // CSSの0.28s + 余裕
+    return () => clearTimeout(timer);
+  }, [page]);
+
   // トースト
   const showToast = (message) => {
     setToastMsg(message);
@@ -157,13 +204,37 @@ function App() {
     });
   };
 
-  // カードタップ
+  // カードタップ → 返信モーダルを開く
   const handleCardClick = (cardData) => {
-    console.log('選択されたカード:', cardData);
-    showToast('このカードの気持ちをタイムラインに投稿できます（将来実装予定）');
+    setReplyTargetCard(cardData);
+    setReplyText('');
   };
 
-  // 長押し
+  // 返信保存
+  const handleReplySubmit = () => {
+    const text = replyText.trim();
+    if (!text) {
+      showToast('返信内容を入力してください');
+      return;
+    }
+    if (!replyTargetCard) return;
+
+    const cardId = replyTargetCard.id;
+    const now = Date.now();
+
+    setCardReplies((prev) => {
+      const prevList = prev[cardId] || [];
+      const nextList = [...prevList, { text, createdAt: now }];
+      const next = { ...prev, [cardId]: nextList };
+      window.localStorage.setItem(STORAGE_KEY_REPLIES, JSON.stringify(next));
+      return next;
+    });
+
+    setReplyText('');
+    showToast('返信を追加しました');
+  };
+
+  // 長押しで拡大表示
   const handlePressStart = (cardData) => {
     if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
     pressTimerRef.current = window.setTimeout(() => {
@@ -307,7 +378,6 @@ function App() {
     setSecretClicks((prev) => {
       const next = prev + 1;
       if (next >= 5) {
-        // 秘密ページへ
         setPage('admin');
         setSecretClicks(0);
         if (secretTimerRef.current) {
@@ -319,6 +389,65 @@ function App() {
       return next;
     });
   };
+
+  // ログイン処理
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (loginUser === VALID_USER && loginPassword === VALID_PASSWORD) {
+      setIsAuthenticated(true);
+      setLoginError('');
+      window.localStorage.setItem(STORAGE_KEY_AUTH, '1');
+      showToast('ログインしました');
+    } else {
+      setLoginError('ユーザー名またはパスワードが違います');
+    }
+  };
+
+  const handleLogout = () => {
+    setIsAuthenticated(false);
+    window.localStorage.removeItem(STORAGE_KEY_AUTH);
+    showToast('ログアウトしました');
+  };
+
+  // ログインしていなければログイン画面だけ出す
+  if (!isAuthenticated) {
+    return (
+      <div className='app-root'>
+        <div className='app login-page'>
+          <h1 className='login-title'>ほっこりカードガチャ ログイン</h1>
+          <p className='login-subtitle'>
+            社内向けアプリのため、ログインが必要です。
+          </p>
+          <form className='login-form' onSubmit={handleLoginSubmit}>
+            <label className='login-label'>
+              ユーザー名
+              <input
+                type='text'
+                value={loginUser}
+                onChange={(e) => setLoginUser(e.target.value)}
+                className='login-input'
+                placeholder='User'
+              />
+            </label>
+            <label className='login-label'>
+              パスワード
+              <input
+                type='password'
+                value={loginPassword}
+                onChange={(e) => setLoginPassword(e.target.value)}
+                className='login-input'
+                placeholder='Passward'
+              />
+            </label>
+            {loginError && <div className='login-error'>{loginError}</div>}
+            <button type='submit' className='btn-main login-button'>
+              ログイン
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className='app-root'>
@@ -373,164 +502,171 @@ function App() {
                 カード管理
               </button>
               {/* admin へのタブは表示しない（隠し機能） */}
+              <button className='nav-tab logout-tab' onClick={handleLogout}>
+                ログアウト
+              </button>
             </div>
           </div>
         </header>
 
-        {/* ページ切替 */}
-        {page === 'gacha' && (
-          <div className='layout'>
-            {/* 左：パック＆ボタン */}
-            <div className='left-panel'>
-              <div className='pack-area'>
-                <div
-                  className='pack-carousel'
-                  onTouchStart={handleCarouselTouchStart}
-                  onTouchEnd={handleCarouselTouchEnd}
-                >
-                  {PACKS.map((pack, idx) => {
-                    const offset = idx - activePackIndex;
-                    let posClass = 'pack-pos-hidden';
-                    if (offset === 0) posClass = 'pack-pos-center';
-                    else if (offset === -1 || offset === PACKS.length - 1)
-                      posClass = 'pack-pos-left';
-                    else if (offset === 1 || offset === -(PACKS.length - 1))
-                      posClass = 'pack-pos-right';
+        {/* ページ切替（アニメーション付き） */}
+        <div className={`page-container ${pageAnimClass}`}>
+          {page === 'gacha' && (
+            <div className='layout'>
+              {/* 左：パック＆ボタン */}
+              <div className='left-panel'>
+                <div className='pack-area'>
+                  <div
+                    className='pack-carousel'
+                    onTouchStart={handleCarouselTouchStart}
+                    onTouchEnd={handleCarouselTouchEnd}
+                  >
+                    {PACKS.map((pack, idx) => {
+                      const offset = idx - activePackIndex;
+                      let posClass = 'pack-pos-hidden';
+                      if (offset === 0) posClass = 'pack-pos-center';
+                      else if (offset === -1 || offset === PACKS.length - 1)
+                        posClass = 'pack-pos-left';
+                      else if (offset === 1 || offset === -(PACKS.length - 1))
+                        posClass = 'pack-pos-right';
 
-                    const isCenter = offset === 0;
+                      const isCenter = offset === 0;
+
+                      return (
+                        <div
+                          key={pack.id}
+                          className={`pack-card ${posClass}`}
+                          onClick={() => {
+                            if (isCenter) handlePackClick();
+                            else setActivePackIndex(idx);
+                          }}
+                        >
+                          <div
+                            className={`pack ${pack.themeClass} ${
+                              packShaking && isCenter ? 'shake' : ''
+                            }`}
+                          >
+                            <div className='pack-label'>{pack.name}</div>
+                            <div className='pack-sub'>{pack.subtitle}</div>
+                            <div className='pack-orb'></div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className='pack-glow'></div>
+                  <div className='pack-hint'>
+                    左右にスワイプしてパックを切り替え
+                  </div>
+                </div>
+
+                <div className='buttons'>
+                  <button
+                    className='btn-main'
+                    onClick={handleGacha}
+                    disabled={buttonDisabled || isOpening}
+                  >
+                    {activePack.name}を開封する（5枚）
+                  </button>
+                </div>
+
+                <div className='odds-text'>
+                  ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
+                  <br />
+                  1回の開封でほっこりカード5枚排出
+                </div>
+              </div>
+
+              {/* 右：開封結果 */}
+              <div className='right-panel'>
+                <div className='result-header'>
+                  <div className='result-title'>開封結果</div>
+                  <div className='result-info'>{resultInfoText}</div>
+                </div>
+                <div className='result-grid'>
+                  {cards.map((c) => {
+                    if (!c.data) return null;
+
+                    const rarity = c.data.rarity;
+                    const rarityClass =
+                      rarity === 'SSR'
+                        ? 'card-ssr'
+                        : rarity === 'SR'
+                        ? 'card-sr'
+                        : 'card-r';
+
+                    const rarityText =
+                      rarity === 'SSR'
+                        ? '★★★★ SSR'
+                        : rarity === 'SR'
+                        ? '★★★ SR'
+                        : '★★ R';
+
+                    const rarityLabelClass =
+                      rarity === 'SSR'
+                        ? 'rarity-ssr'
+                        : rarity === 'SR'
+                        ? 'rarity-sr'
+                        : 'rarity-r';
 
                     return (
                       <div
-                        key={pack.id}
-                        className={`pack-card ${posClass}`}
-                        onClick={() => {
-                          if (isCenter) handlePackClick();
-                          else setActivePackIndex(idx);
-                        }}
+                        key={c.id}
+                        className={`card ${rarityClass} ${
+                          c.visible ? 'show' : ''
+                        }`}
+                        onClick={() => handleCardClick(c.data)}
+                        onMouseDown={() => handlePressStart(c.data)}
+                        onMouseUp={handlePressEnd}
+                        onMouseLeave={handlePressEnd}
+                        onTouchStart={() => handlePressStart(c.data)}
+                        onTouchEnd={handlePressEnd}
+                        onTouchCancel={handlePressEnd}
                       >
                         <div
-                          className={`pack ${pack.themeClass} ${
-                            packShaking && isCenter ? 'shake' : ''
-                          }`}
+                          className={`card-rarity-tag ${rarityLabelClass}`}
                         >
-                          <div className='pack-label'>{pack.name}</div>
-                          <div className='pack-sub'>{pack.subtitle}</div>
-                          <div className='pack-orb'></div>
+                          {rarityText}
+                        </div>
+                        <div className='card-name'>{c.data.name}</div>
+                        <div className='card-body'>
+                          {c.data.image && (
+                            <img
+                              src={c.data.image}
+                              alt={c.data.name}
+                              className='card-image'
+                              draggable='false'
+                            />
+                          )}
+                          {c.data.message && (
+                            <p className='card-message'>{c.data.message}</p>
+                          )}
+                        </div>
+                        <div className='card-footer'>
+                          <span>{c.data.category || c.data.type}</span>
+                          <span>{c.data.series}</span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-                <div className='pack-glow'></div>
-                <div className='pack-hint'>
-                  左右にスワイプしてパックを切り替え
-                </div>
-              </div>
-
-              <div className='buttons'>
-                <button
-                  className='btn-main'
-                  onClick={handleGacha}
-                  disabled={buttonDisabled || isOpening}
-                >
-                  {activePack.name}を開封する（5枚）
-                </button>
-              </div>
-
-              <div className='odds-text'>
-                ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
-                <br />
-                1回の開封でほっこりカード5枚排出
               </div>
             </div>
+          )}
 
-            {/* 右：開封結果 */}
-            <div className='right-panel'>
-              <div className='result-header'>
-                <div className='result-title'>開封結果</div>
-                <div className='result-info'>{resultInfoText}</div>
-              </div>
-              <div className='result-grid'>
-                {cards.map((c) => {
-                  if (!c.data) return null;
+          {page === 'manage' && (
+            <CardManagePage
+              onBack={() => setPage('gacha')}
+              ownedCards={ownedCards}
+            />
+          )}
 
-                  const rarity = c.data.rarity;
-                  const rarityClass =
-                    rarity === 'SSR'
-                      ? 'card-ssr'
-                      : rarity === 'SR'
-                      ? 'card-sr'
-                      : 'card-r';
+          {page === 'admin' && (
+            <AdminCardListPage onBack={() => setPage('gacha')} />
+          )}
+        </div>
 
-                  const rarityText =
-                    rarity === 'SSR'
-                      ? '★★★★ SSR'
-                      : rarity === 'SR'
-                      ? '★★★ SR'
-                      : '★★ R';
-
-                  const rarityLabelClass =
-                    rarity === 'SSR'
-                      ? 'rarity-ssr'
-                      : rarity === 'SR'
-                      ? 'rarity-sr'
-                      : 'rarity-r';
-
-                  return (
-                    <div
-                      key={c.id}
-                      className={`card ${rarityClass} ${
-                        c.visible ? 'show' : ''
-                      }`}
-                      onClick={() => handleCardClick(c.data)}
-                      onMouseDown={() => handlePressStart(c.data)}
-                      onMouseUp={handlePressEnd}
-                      onMouseLeave={handlePressEnd}
-                      onTouchStart={() => handlePressStart(c.data)}
-                      onTouchEnd={handlePressEnd}
-                      onTouchCancel={handlePressEnd}
-                    >
-                      <div className={`card-rarity-tag ${rarityLabelClass}`}>
-                        {rarityText}
-                      </div>
-                      <div className='card-name'>{c.data.name}</div>
-                      <div className='card-body'>
-                        {c.data.image && (
-                          <img
-                            src={c.data.image}
-                            alt={c.data.name}
-                            className='card-image'
-                            draggable='false'
-                          />
-                        )}
-                        {c.data.message && (
-                          <p className='card-message'>{c.data.message}</p>
-                        )}
-                      </div>
-                      <div className='card-footer'>
-                        <span>{c.data.category || c.data.type}</span>
-                        <span>{c.data.series}</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {page === 'manage' && (
-          <CardManagePage
-            onBack={() => setPage('gacha')}
-            ownedCards={ownedCards}
-          />
-        )}
-
-        {page === 'admin' && (
-          <AdminCardListPage onBack={() => setPage('gacha')} />
-        )}
-
-        {/* 長押しモーダル */}
+        {/* 長押しモーダル（拡大表示） */}
         {expandedCard && (
           <div
             className='card-modal-backdrop'
@@ -571,8 +707,83 @@ function App() {
                   </span>
                 </div>
                 {expandedCard.message && (
-                  <p className='card-modal-message'>{expandedCard.message}</p>
+                  <p className='card-modal-message'>
+                    {expandedCard.message}
+                  </p>
                 )}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 返信モーダル */}
+        {replyTargetCard && (
+          <div
+            className='card-modal-backdrop'
+            onClick={() => setReplyTargetCard(null)}
+          >
+            <div className='card-modal' onClick={(e) => e.stopPropagation()}>
+              <div className='card-modal-header'>
+                <span className='card-modal-title'>
+                  {replyTargetCard.name} への返信
+                </span>
+                <button
+                  className='card-modal-close'
+                  onClick={() => setReplyTargetCard(null)}
+                >
+                  ×
+                </button>
+              </div>
+              <div className='card-modal-body'>
+                {replyTargetCard.message && (
+                  <p className='card-modal-message original-message'>
+                    {replyTargetCard.message}
+                  </p>
+                )}
+
+                <div className='reply-list'>
+                  <div className='reply-list-title'>これまでの返信</div>
+                  {(
+                    cardReplies[replyTargetCard.id] || []
+                  ).length === 0 ? (
+                    <div className='reply-empty'>
+                      まだ返信はありません。最初の一言を送ってみましょう。
+                    </div>
+                  ) : (
+                    <ul className='reply-items'>
+                      {cardReplies[replyTargetCard.id].map((r, idx) => (
+                        <li key={idx} className='reply-item'>
+                          <div className='reply-text'>{r.text}</div>
+                          <div className='reply-meta'>
+                            {new Date(r.createdAt).toLocaleString('ja-JP', {
+                              year: 'numeric',
+                              month: '2-digit',
+                              day: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })}
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+
+                <div className='reply-form'>
+                  <textarea
+                    className='reply-textarea'
+                    placeholder='このカードをくれた人に、感謝やひとことを返してみましょう'
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                  />
+                  <button
+                    className='btn-main reply-button'
+                    type='button'
+                    onClick={handleReplySubmit}
+                  >
+                    返信を追加
+                  </button>
+                </div>
               </div>
             </div>
           </div>
