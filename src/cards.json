@@ -223,6 +223,24 @@
     "series": "HOKKORI COLLECTION",
     "image": "/cards/125.jpeg",
     "message": "部屋の片付けをしていたはずが、懐かしい漫画を見つけて読みふけってしまい、掃除前より部屋が散らかった。"
+  },
+   {
+    "id": "key-look",
+    "name": "鍵閉めたっけ？....",
+    "rarity": "SR",
+    "category": "物忘",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/126.png",
+    "message": "鍵をちゃんと閉めたかわからなくなる...これあるあるだよね..."
+  },
+   {
+    "id": "limocon-lost",
+    "name": "リモコンの大脱走",
+    "rarity": "R",
+    "category": "物忘",
+    "series": "HOKKORI COLLECTION",
+    "image": "/cards/127.png",
+    "message": "テレビのリモコン一人でに消えがち...."
   }
 ]
 
