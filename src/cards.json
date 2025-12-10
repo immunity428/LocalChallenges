@@ -59,7 +59,7 @@
     "rarity": "R",
     "category": "悲劇",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/meeting.png",
+    "image": "/cards/110.jpg",
     "message": "「最後に何か質問は？」頼む、誰も手を挙げるな…！という全社員の祈りを切り裂く「はい！」の声。"
   },
   {
@@ -68,7 +68,7 @@
     "rarity": "SR",
     "category": "秘密",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/webcam.png",
+    "image": "/cards/109.webp",
     "message": "Web会議中。画面に映る上半身は完璧なワイシャツ姿だが、下半身がパジャマなのは墓場まで持っていく秘密だ。"
   },
   {
@@ -77,7 +77,7 @@
     "rarity": "R",
     "category": "怒り",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/password.png",
+    "image": "/cards/111.png",
     "message": "「新しいパスワードは前回と同じものは使えません」。いや、前回のが思い出せないから変更してるんですが？"
   },
   {
@@ -86,7 +86,7 @@
     "rarity": "N",
     "category": "騒音",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/keyboard_smash.png",
+    "image": "/cards/112.png",
     "message": "隣の席の人、Enterキーを押す時だけ「ッターン！」って音がデカい。そのうちキーボードが爆発するだろう。"
   },
   {
@@ -95,7 +95,7 @@
     "rarity": "R",
     "category": "失敗",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/email.png",
+    "image": "/cards/113.jpg",
     "message": "「資料を添付します」と書いて送信ボタンを押した0.5秒後に気づく。ファイルを付けていないことに。"
   },
   {
@@ -104,16 +104,16 @@
     "rarity": "SSR",
     "category": "スキル",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/dash.png",
+    "image": "/cards/114.webp",
     "message": "17:59に片付けを完了し、18:00ジャストに退勤ボタンを押す。その無駄のない動き、もはやアスリート。"
   },
   {
     "id": "snack-hunter",
     "name": "お土産ハイエナ",
-    "rarity": "N",
+    "rarity": "R",
     "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/snack.png",
+    "image": "/cards/115.png",
     "message": "共有スペースに「ご自由にお取りください」のお菓子が置かれた瞬間、野生の勘で感知して群がる私たち。"
   },
   {
@@ -122,7 +122,7 @@
     "rarity": "SR",
     "category": "絶望",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/windows_update.png",
+    "image": "/cards/108.jpg",
     "message": "急いで帰ろうとした時に限って現れる「更新してシャットダウン」。いまじゃない、絶対に今じゃない。"
   },
   {
@@ -131,7 +131,7 @@
     "rarity": "R",
     "category": "情緒",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/sunday_night.png",
+    "image": "/cards/116.png",
     "message": "サザエさんを見終わった瞬間に押し寄せる「明日が来る」という現実。時を戻そう（切実）。"
   },
   {
@@ -140,16 +140,16 @@
     "rarity": "SSR",
     "category": "希望",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/beer.png",
+    "image": "/cards/117.jpeg",
     "message": "金曜の午後だけ、私の仕事効率は通常の3倍になる。その後のビールのことしか考えていないからだ。"
   },
   {
     "id": "futon-gravity",
     "name": "布団の引力",
-    "rarity": "SSR",
+    "rarity": "R",
     "category": "朝",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/futon.png",
+    "image": "/cards/118.png",
     "message": "今の時期の布団の引力はブラックホール並み。あと5分…あと5分だけ…と唱えて気づけば30分経過。"
   },
   {
@@ -158,25 +158,16 @@
     "rarity": "R",
     "category": "食欲",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/noodle.png",
+    "image": "/cards/107.jpg",
     "message": "「ダイエットは明日から」と言い続けて早3年。深夜に食べるラーメンが一番美味いのは、私のせいではなく脳のバグだ。"
-  },
-  {
-    "id": "netflix-trap",
-    "name": "休日ワープ",
-    "rarity": "SR",
-    "category": "休日",
-    "series": "HOKKORI COLLECTION",
-    "image": "/cards/movie.png",
-    "message": "気づいたら夕方だった。「次のエピソードを再生」を押し続けただけで私の休日は溶けて消えた。"
   },
   {
     "id": "umbrella-lost",
     "name": "ビニール傘の行方",
-    "rarity": "N",
+    "rarity": "R",
     "category": "ミステリー",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/umbrella.png",
+    "image": "/cards/119.png",
     "message": "買ったばかりのビニール傘がすぐ行方不明になる。あいつら絶対足生えてるし、勝手に旅に出てると思う。"
   },
   {
@@ -185,16 +176,16 @@
     "rarity": "R",
     "category": "痛み",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/bed_phone.png",
+    "image": "/cards/120.jpeg",
     "message": "仰向けでスマホをいじっていて、顔面に落下した時の衝撃。鼻が折れたかと思った。静かな部屋に響く悲痛の叫び。"
   },
   {
     "id": "payday-illusion",
     "name": "給料日の幻",
-    "rarity": "SR",
+    "rarity": "R",
     "category": "金欠",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/wallet.png",
+    "image": "/cards/121.jpg",
     "message": "給料日！口座が潤った瞬間にカードの引き落としで致命傷を負う毎月のイベント。私はただの通過点。"
   },
   {
@@ -203,16 +194,16 @@
     "rarity": "R",
     "category": "料理",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/dark_matter.png",
+    "image": "/cards/122.png",
     "message": "レシピ通りに作ったはずなのに、なぜか写真とは似ても似つかない「ダークマター」が生成された。味は…虚無。"
   },
   {
     "id": "delivery-waiting",
     "name": "不在票の悲しみ",
-    "rarity": "N",
+    "rarity": "R",
     "category": "運送",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/box.png",
+    "image": "/cards/123.png",
     "message": "10分だけ外出してる間にポストに入ってる不在票をみて膝から崩れ落ちた。"
   },
   {
@@ -221,7 +212,7 @@
     "rarity": "SR",
     "category": "健康",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/gym.png",
+    "image": "/cards/124.jpeg",
     "message": "月額会員費だけ払って全く行っていないジム。私は筋肉をつけるためではなく、ジムの経営を支えるために生きている。"
   },
   {
@@ -230,7 +221,7 @@
     "rarity": "R",
     "category": "掃除",
     "series": "HOKKORI COLLECTION",
-    "image": "/cards/manga.png",
+    "image": "/cards/125.jpeg",
     "message": "部屋の片付けをしていたはずが、懐かしい漫画を見つけて読みふけってしまい、掃除前より部屋が散らかった。"
   }
 ]
