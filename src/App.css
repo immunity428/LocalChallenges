@@ -751,3 +751,231 @@
     margin-top: 0;
   }
 }
+
+/* ===============================
+   PC 向けレイアウト拡張
+   （今ある @media (min-width: 768px) の“下”に追加）
+   =============================== */
+
+/* ノートPC〜フルHD くらい */
+@media (min-width: 1024px) {
+  .app-root {
+    padding: 32px;
+  }
+
+  .app {
+    max-width: 1120px;
+    padding: 24px 26px 30px;
+    border-radius: 28px;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.18);
+  }
+
+  /* ヘッダーを横並びで余裕を持たせる */
+  .app-header {
+    margin-bottom: 20px;
+    gap: 16px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .header-right {
+    align-items: flex-end;
+  }
+
+  .cooldown {
+    font-size: 12px;
+  }
+
+  .nav-tab {
+    font-size: 12px;
+    padding: 6px 14px;
+  }
+
+  /* メインレイアウトを左右 2 カラムに */
+  .layout {
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 24px;
+  }
+
+  .left-panel {
+    flex: 0 0 360px;
+    align-items: stretch;
+  }
+
+  .right-panel {
+    flex: 1;
+    padding: 14px 14px 18px;
+    min-height: 260px;
+  }
+
+  /* パックを少し大きめに */
+  .pack-area {
+    max-width: 100%;
+  }
+
+  .pack-carousel {
+    height: 140px;
+  }
+
+  .pack-card {
+    width: 88%;
+    max-width: 360px;
+  }
+
+  .pack {
+    padding: 18px 20px 18px;
+    border-radius: 26px;
+  }
+
+  .pack-orb {
+    width: 52px;
+    height: 52px;
+  }
+
+  /* PC ではカードを 4 列グリッドに */
+  .result-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .card {
+    padding: 8px;
+  }
+
+  .card-name {
+    font-size: 12px;
+  }
+
+  .card-message {
+    font-size: 11px;
+  }
+}
+
+/* さらに大きいディスプレイ（フルHD〜）用の微調整 */
+@media (min-width: 1360px) {
+  .app-root {
+    padding: 40px 48px;
+  }
+
+  .app {
+    max-width: 1240px;
+  }
+
+  .left-panel {
+    flex: 0 0 380px;
+  }
+
+  .result-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 768px) {
+  .left-panel {
+    margin-top: 20px;
+  }
+}
+
+/* ===============================
+   管理ページの PC 最適化
+   =============================== */
+
+/* タブレット以上で管理カードを横並び & 2列に */
+@media (min-width: 768px) {
+  /* 管理ページを少し広めに */
+  .manage-page {
+    padding: 16px 16px 20px;
+  }
+
+  /* カード一覧をグリッドに（2列） */
+  .manage-card-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  /* 各カードを「画像＋テキスト」の横並びに */
+  .manage-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .manage-card-image {
+    flex: 0 0 170px;        /* 画像の固定幅 */
+    margin-bottom: 0;       /* モバイル用の余白をリセット */
+  }
+
+  .manage-card-image img {
+    width: 100%;
+    height: 150px;          /* 高さ固定でそろえる */
+    object-fit: cover;
+    border-radius: 10px;
+  }
+
+  .manage-card-content {
+    flex: 1;
+  }
+
+  .manage-card-name {
+    font-size: 13px;
+  }
+
+  .manage-card-message {
+    font-size: 12px;
+  }
+}
+
+/* もう少し横幅があるとき（1024px〜）は余裕を持たせる */
+@media (min-width: 1024px) {
+  .manage-page {
+    margin-top: 8px;
+  }
+
+  .manage-card-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+
+  .manage-card-image {
+    flex-basis: 190px;
+  }
+
+  .manage-card-image img {
+    height: 170px;
+  }
+}
+
+/* フルHD 以上では 3列にしてもOK */
+@media (min-width: 1360px) {
+  .manage-card-list {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .manage-card-image {
+    flex-basis: 180px;
+  }
+}
+
+/* PC レイアウト時：右パネルの開始位置を右に寄せる */
+@media (min-width: 768px) {
+  .right-panel {
+    margin-left: 60px;  /* ← 左パネルから離す距離（調整可） */
+  }
+}
+
+/* 大きめ画面ならもう少し広げる */
+@media (min-width: 1024px) {
+  .right-panel {
+    margin-left: 80px;
+  }
+}
+
