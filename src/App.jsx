@@ -356,7 +356,7 @@ function App() {
       } else if (srCount > 0) {
         showToast(`SR ${srCount}枚！次は伝説級のほっこりを狙おう。`);
       } else {
-        showToast('次のほっこりパックに期待！');
+        showToast('次のパックに期待！');
       }
 
       // 所持カードに保存
@@ -414,7 +414,7 @@ function App() {
     return (
       <div className='app-root'>
         <div className='app login-page'>
-          <h1 className='login-title'>ほっこりカードガチャ ログイン</h1>
+          <h1 className='login-title'>Hoccoo ログイン</h1>
           <p className='login-subtitle'>
             社内向けアプリのため、ログインが必要です。
           </p>
@@ -472,7 +472,7 @@ function App() {
         <header className='app-header'>
           <div className='title-block'>
             <div className='title' onClick={handleSecretTitleClick}>
-              ほっこりカードガチャ
+              Hoccoo
             </div>
             <div className='subtitle'>
               社員同士の「ありがとう」「おつかれさま」を集める ガチャ
