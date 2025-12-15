@@ -570,7 +570,7 @@ const leaderboard = useMemo(() => {
                         対象：{q.targetDept} {q.targetName}
                       </span>
                     </div>
-                    <div className="hq-qnote">※達成は「掲示板投稿」で自動判定（相手＋キーワード）</div>
+                    <div className="hq-qnote"></div>
                   </div>
                 ))}
               </div>
