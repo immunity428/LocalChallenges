@@ -273,12 +273,47 @@ export default function App() {
   const currentUser = auth?.user || "";
   const isAuthenticated = !!auth?.isAuthed;
 
-  const leaderboard = useMemo(() => {
-    const entries = Object.entries(pointsByUser || {})
-      .map(([u, p]) => ({ user: u, points: Number(p || 0) }))
-      .sort((a, b) => b.points - a.points || a.user.localeCompare(b.user, "ja"));
-    return entries;
-  }, [pointsByUser]);
+  const DEMO_EMPLOYEE_NAMES = [
+  "たなかさん",
+  "さとぴー",
+  "営業の佐藤",
+  "デザイン係Y",
+  "もっちー",
+  "H.R.すずき",
+  "開発たろう",
+  "きむ兄",
+  "いとう先輩",
+  "CSみさき",
+];
+
+const leaderboard = useMemo(() => {
+  // 実ユーザー
+  const real = Object.entries(pointsByUser || {})
+    .map(([u, p]) => ({
+      user: u,
+      points: Number(p || 0),
+      isDemo: false,
+    }))
+    .sort((a, b) => b.points - a.points);
+
+  // デモ用従業員
+  const demoEmployees = DEMO_EMPLOYEE_NAMES.map((name, i) => ({
+    user: name,
+    points: 120 - i * 7, // いい感じに減衰
+    isDemo: true,
+  }));
+
+  // 実ユーザー優先 → デモで補完 → 上位10
+  const merged = [...real];
+  for (const d of demoEmployees) {
+    if (!merged.find((r) => r.user === d.user)) {
+      merged.push(d);
+    }
+    if (merged.length >= 10) break;
+  }
+
+  return merged.slice(0, 10);
+}, [pointsByUser]);
 
   // persist
   useEffect(() => saveLS(LS_AUTH, auth), [auth]);
@@ -448,7 +483,7 @@ export default function App() {
           <form className="hq-login" onSubmit={handleLogin}>
             <label className="hq-field">
               <span>ユーザー名</span>
-              <input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="例）T124041" />
+              <input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="例)Taro" />
             </label>
             <label className="hq-field">
               <span>パスワード</span>
@@ -464,7 +499,7 @@ export default function App() {
             <ul>
               <li>ガチャを押す → 演出後に「5枚クエスト」が出る</li>
               <li>掲示板の投稿で自動判定 → 達成するとポイント加算＆クエスト1枚補充</li>
-              <li>どれもしたくない時は「ランチ（引き直し）」投稿で5枚全部を引き直し</li>
+              <li>どれもしたくない時は「誰かとランチ（引き直し）」投稿で5枚全部を引き直し</li>
             </ul>
           </div>
 
@@ -591,7 +626,7 @@ export default function App() {
                   <select value={postType} onChange={(e) => setPostType(e.target.value)}>
                     <option value="chat">雑談</option>
                     <option value="complete">完了報告（クエスト達成）</option>
-                    <option value="lunch">ランチ（引き直し）</option>
+                    <option value="lunch">誰かとランチ（引き直し）</option>
                   </select>
                 </label>
 
@@ -663,7 +698,7 @@ export default function App() {
                 ))}
               </div>
             )}
-            <div className="hq-smallnote">※デモではブラウザ内のローカル保存です。</div>
+            <div className="hq-smallnote"></div>
           </section>
         )}
       </div>
