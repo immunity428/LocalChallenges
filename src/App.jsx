@@ -658,7 +658,6 @@ const leaderboard = useMemo(() => {
                   投稿
                 </button>
                 <div className="hq-smallnote">
-                  ・達成は<strong>「相手」</strong>と<strong>キーワード</strong>で自動判定します。<br />
                   ・「ランチ（引き直し）」は<strong>5枚全部を引き直し</strong>します（ポイントは増えません）。
                 </div>
               </div>
