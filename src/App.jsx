@@ -40,8 +40,13 @@ const PACKS = [
 // レアリティ判定
 function rollRarity() {
   const r = Math.random();
-  if (r < 0.05) return 'SSR';
-  if (r < 0.05 + 0.15) return 'SR';
+  // 0.1%: LEGEND（社長の奢り）
+  if (r < 0.001) return 'LEGEND';
+  // 5%: SSR
+  if (r < 0.001 + 0.05) return 'SSR';
+  // 15%: SR
+  if (r < 0.001 + 0.05 + 0.15) return 'SR';
+  // 残り: R
   return 'R';
 }
 
@@ -571,7 +576,7 @@ function App() {
                 </div>
 
                 <div className='odds-text'>
-                  ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
+                  ★★★★★(LEGEND): 0.1% ／ ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
                   <br />
                   1回の開封でほっこりカード5枚排出
                 </div>
@@ -589,21 +594,27 @@ function App() {
 
                     const rarity = c.data.rarity;
                     const rarityClass =
-                      rarity === 'SSR'
+                      rarity === 'LEGEND'
+                        ? 'card-legend'
+                        : rarity === 'SSR'
                         ? 'card-ssr'
                         : rarity === 'SR'
                         ? 'card-sr'
                         : 'card-r';
 
                     const rarityText =
-                      rarity === 'SSR'
+                      rarity === 'LEGEND'
+                        ? '★★★★★ LEGEND'
+                        : rarity === 'SSR'
                         ? '★★★★ SSR'
                         : rarity === 'SR'
                         ? '★★★ SR'
                         : '★★ R';
 
                     const rarityLabelClass =
-                      rarity === 'SSR'
+                      rarity === 'LEGEND'
+                        ? 'rarity-legend'
+                        : rarity === 'SSR'
                         ? 'rarity-ssr'
                         : rarity === 'SR'
                         ? 'rarity-sr'

@@ -1143,3 +1143,68 @@
     transform: translateX(0);
   }
 }
+
+/* ===== LEGEND（超激レア） ===== */
+.card-legend {
+  position: relative;
+  border-radius: 12px;
+  box-shadow: 0 0 18px rgba(255, 215, 0, 0.9);
+  overflow: hidden;
+}
+
+/* 虹色の枠だけを担当 */
+.card-legend::before {
+  content: "";
+  position: absolute;
+  inset: -3px;
+  background: linear-gradient(
+    135deg,
+    red,
+    orange,
+    yellow,
+    green,
+    cyan,
+    blue,
+    violet
+  );
+  animation: rainbowGlow 2.5s linear infinite;
+  z-index: 0;
+}
+
+/* 中のカード本体（白背景） */
+.card-legend::after {
+  content: "";
+  position: absolute;
+  inset: 2px;              /* ← 枠を見せるため少し内側 */
+  background: linear-gradient(#fff, #fff);
+  border-radius: 10px;
+  z-index: 1;
+}
+
+/* 中身（画像・文字）は常に最前面 */
+.card-legend > * {
+  position: relative;
+  z-index: 2;
+}
+
+/* 枠だけ色が回る */
+@keyframes rainbowGlow {
+  0%   { filter: hue-rotate(0deg); }
+  100% { filter: hue-rotate(360deg); }
+}
+
+/* レアリティタグ */
+.rarity-legend {
+  background: linear-gradient(
+    135deg,
+    red,
+    orange,
+    yellow,
+    green,
+    cyan,
+    blue,
+    violet
+  );
+  color: #fff;
+  font-weight: 800;
+}

@@ -241,6 +241,16 @@
     "series": "HOKKORI COLLECTION",
     "image": "/cards/127.png",
     "message": "テレビのリモコン一人でに消えがち...."
-  }
+  },
+  {
+  "id": "boss-treat",
+  "name": "社長の奢り",
+  "rarity": "LEGEND",
+  "category": "奇跡",
+  "series": "HOKKORI COLLECTION",
+  "image": "/cards/128.jpg",
+  "message": "「俺が払うよ。」このカードを社長に見せると昼飯が奢ってもらえる！"
+}
 ]
+
 
