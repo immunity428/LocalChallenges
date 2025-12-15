@@ -1,975 +1,672 @@
+
 // App.jsx
-import React, { useEffect, useState, useRef, useMemo } from 'react';
-import './App.css';
-import cardPool from './cards.json';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import "./App.css";
 
-const COOLDOWN_MS = 10 * 1000; // 10s（本番では4hなどに変更）
-const STORAGE_KEY_LAST_TIME = 'freeGachaLastTime';
-const STORAGE_KEY_OWNED = 'hokkoriOwnedCards';
-const STORAGE_KEY_REPLIES = 'hokkoriCardReplies';
-const STORAGE_KEY_AUTH = 'hokkoriLoginAuth';
+/**
+ * Hoccoo Quest (Demo)
+ * - Gacha: one pull => 5 quests, with a short "演出" (animation) before revealing
+ * - Completion: auto-detected from bulletin board posts (match target + keywords)
+ * - No point history (only total points per user)
+ * - Reroll: (1) button reroll in gacha (5枚)  (2) post "ランチ（引き直し）" with someone => reroll 5
+ * - Storage: localStorage only (demo)
+ */
 
-const LONG_PRESS_MS = 500;
+const APP_TITLE = "Hoccoo Quest";
+const PASSWORD = "Suwarika";
+const QUEST_HAND_SIZE = 5;
 
-// ログイン情報
-const VALID_USER = 'User';
-const VALID_PASSWORD = 'Suwarika';
+// localStorage keys
+const LS_AUTH = "hq_auth_v2";
+const LS_PEOPLE = "hq_people_v2";
+const LS_POSTS = "hq_posts_v2";
+const LS_POINTS = "hq_points_v2";
+const LS_ACTIVE_QUESTS = "hq_active_quests_v2";
+const LS_SEEDED = "hq_seeded_v2";
 
-// パック定義
-const PACKS = [
+// ----- helpers -----
+const nowISO = () => new Date().toISOString();
+
+function safeJsonParse(str, fallback) {
+  try {
+    const v = JSON.parse(str);
+    return v ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+function loadLS(key, fallback) {
+  return safeJsonParse(localStorage.getItem(key), fallback);
+}
+function saveLS(key, value) {
+  localStorage.setItem(key, JSON.stringify(value));
+}
+function uid(prefix = "id") {
+  return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`;
+}
+function formatJPDate(iso) {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString("ja-JP", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+function pick(arr) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+function normalize(s) {
+  return (s || "").toString().trim().toLowerCase();
+}
+function includesAny(text, candidates) {
+  const t = normalize(text);
+  return candidates.some((c) => t.includes(normalize(c)));
+}
+
+// ----- People -----
+const DEFAULT_PEOPLE = [
+  { id: "p_sales_1", dept: "営業", name: "佐藤" },
+  { id: "p_dev_1", dept: "開発", name: "田中" },
+  { id: "p_hr_1", dept: "人事", name: "鈴木" },
+  { id: "p_cs_1", dept: "CS", name: "高橋" },
+  { id: "p_mfg_1", dept: "製造", name: "伊藤" },
+];
+
+// ----- Quest generation (AI-like templates) -----
+const ACTIONS = [
   {
-    id: 'hokkori',
-    name: 'ほっこりパック',
-    subtitle: '無料開封',
-    themeClass: 'pack-theme-pink',
+    key: "drink",
+    label: "ジュース",
+    base: 5,
+    keywords: ["ジュース", "自販機", "飲み物", "買った", "奢った", "差し入れ", "ドリンク"],
+    templates: [
+      "他部署の【{dept}】{name}さんに自販機でジュースを買ってみよう",
+      "【{dept}】{name}さんに飲み物の差し入れをして一言ねぎらいを伝えよう",
+    ],
   },
   {
-    id: 'cheer',
-    name: 'チアアップパック',
-    subtitle: 'ねぎらいメッセージ多め',
-    themeClass: 'pack-theme-blue',
+    key: "lunch",
+    label: "ランチ",
+    base: 12,
+    keywords: ["ランチ", "昼", "昼飯", "ご飯", "一緒に食べた", "定食", "食堂"],
+    templates: [
+      "他部署の【{dept}】{name}さんと一緒にランチに行ってみよう",
+      "【{dept}】{name}さんをランチに誘って、最近の困りごとを1つ聞こう",
+    ],
   },
   {
-    id: 'welcome',
-    name: 'ウェルカムパック',
-    subtitle: '新メンバー歓迎カード',
-    themeClass: 'pack-theme-green',
+    key: "coffee",
+    label: "コーヒー",
+    base: 8,
+    keywords: ["コーヒー", "カフェ", "お茶", "休憩", "一息", "飲んだ"],
+    templates: [
+      "他部署の【{dept}】{name}さんと10分だけコーヒーブレイクをしよう",
+      "【{dept}】{name}さんと短い休憩を取り、最近嬉しかったことを共有しよう",
+    ],
+  },
+  {
+    key: "help",
+    label: "助ける",
+    base: 15,
+    keywords: ["手伝", "助け", "対応", "レビュー", "相談", "解決", "サポート", "教えた"],
+    templates: [
+      "他部署の【{dept}】{name}さんの小さな困りごとを1つ手伝ってみよう",
+      "【{dept}】{name}さんに「今、困ってることある？」と聞き、可能なら支援しよう",
+    ],
+  },
+  {
+    key: "chat",
+    label: "雑談",
+    base: 6,
+    keywords: ["雑談", "話した", "会話", "あいさつ", "声かけ", "近況", "自己紹介"],
+    templates: [
+      "他部署の【{dept}】{name}さんに挨拶＋一言雑談してみよう（30秒でOK）",
+      "【{dept}】{name}さんと短い会話をして、相手の業務を1つ学ぼう",
+    ],
   },
 ];
 
-// レアリティ判定
-function rollRarity() {
-  const r = Math.random();
-  // 0.1%: LEGEND（社長の奢り）
-  if (r < 0.001) return 'LEGEND';
-  // 5%: SSR
-  if (r < 0.001 + 0.05) return 'SSR';
-  // 15%: SR
-  if (r < 0.001 + 0.05 + 0.15) return 'SR';
-  // 残り: R
-  return 'R';
+function actionByKey(key) {
+  return ACTIONS.find((a) => a.key === key) || ACTIONS[0];
 }
 
-// レアリティごとにランダム1枚
-function getRandomCardByRarity(rarity) {
-  const candidates = cardPool.filter((c) => c.rarity === rarity);
-  if (!candidates.length) return null;
-  const idx = Math.floor(Math.random() * candidates.length);
-  return candidates[idx];
+function buildQuest(people) {
+  const target = pick(people);
+  const action = pick(ACTIONS);
+  const text = pick(action.templates).replace("{dept}", target.dept).replace("{name}", target.name);
+  const bonus = Math.random() < 0.25 ? 3 : Math.random() < 0.08 ? 6 : 0;
+  const points = action.base + bonus;
+  return {
+    id: uid("q"),
+    createdAt: nowISO(),
+    targetPersonId: target.id,
+    targetDept: target.dept,
+    targetName: target.name,
+    actionKey: action.key,
+    actionLabel: action.label,
+    points,
+    text,
+    status: "active",
+  };
+}
+function buildQuestHand(people, n = QUEST_HAND_SIZE) {
+  return Array.from({ length: n }, () => buildQuest(people));
 }
 
-// 残り時間表示
-function formatTime(ms) {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
-  const h = Math.floor(totalSeconds / 3600);
-  const m = Math.floor((totalSeconds % 3600) / 60);
-  const s = totalSeconds % 60;
-  const pad = (n) => n.toString().padStart(2, '0');
-  return `${pad(h)}:${pad(m)}:${pad(s)}`;
+// ----- Post → quest logic -----
+function postCompletesQuest({ post, quest }) {
+  if (!post || !quest || quest.status !== "active") return false;
+  if (!post.withWhomPersonId) return false;
+  if (post.withWhomPersonId !== quest.targetPersonId) return false;
+
+  const action = actionByKey(quest.actionKey);
+
+  if (post.type === "complete") {
+    if (includesAny(post.body, action.keywords)) return true;
+    return includesAny(post.body, ["達成", "完了", "できた", "やった", "クリア"]);
+  }
+  return includesAny(post.body, action.keywords);
+}
+function isLunchReroll(post) {
+  return post?.type === "lunch" && !!post.withWhomPersonId;
 }
 
-function App() {
-  // ログイン状態
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loginUser, setLoginUser] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
-  const [loginError, setLoginError] = useState('');
+// ----- seed sample data -----
+function seedIfNeeded() {
+  const seeded = loadLS(LS_SEEDED, false);
+  if (seeded) return;
 
-  const [lastGachaTime, setLastGachaTime] = useState(null);
-  const [cooldownLabel, setCooldownLabel] = useState('準備完了！');
-  const [buttonDisabled, setButtonDisabled] = useState(false);
+  const people = loadLS(LS_PEOPLE, null);
+  if (!people || !Array.isArray(people) || people.length === 0) {
+    saveLS(LS_PEOPLE, DEFAULT_PEOPLE);
+  }
 
-  // ガチャ結果表示用
-  const [cards, setCards] = useState([]);
-  const [resultInfoText, setResultInfoText] =
-    useState('まだほっこりカードを引いていません。');
+  const samplePosts = [
+    {
+      id: uid("post"),
+      createdAt: nowISO(),
+      author: "demo",
+      type: "chat",
+      withWhomPersonId: "p_sales_1",
+      withWhomLabel: "営業 佐藤",
+      body: "今日、営業の佐藤さんと挨拶ついでに軽く雑談しました。最近忙しそう…！",
+    },
+    {
+      id: uid("post"),
+      createdAt: nowISO(),
+      author: "demo",
+      type: "lunch",
+      withWhomPersonId: "p_dev_1",
+      withWhomLabel: "開発 田中",
+      body: "開発の田中さんと食堂でランチ（引き直し用の投稿例）",
+    },
+    {
+      id: uid("post"),
+      createdAt: nowISO(),
+      author: "demo",
+      type: "complete",
+      withWhomPersonId: "p_hr_1",
+      withWhomLabel: "人事 鈴木",
+      body: "人事の鈴木さんに飲み物の差し入れ（自販機ジュース）しました！達成！",
+    },
+  ];
 
-  const [isOpening, setIsOpening] = useState(false);
-  const [packShaking, setPackShaking] = useState(false);
+  const existingPosts = loadLS(LS_POSTS, []);
+  if (!Array.isArray(existingPosts) || existingPosts.length === 0) {
+    saveLS(LS_POSTS, samplePosts);
+  }
 
-  const [toastMsg, setToastMsg] = useState('');
-  const [toastVisible, setToastVisible] = useState(false);
+  saveLS(LS_POINTS, loadLS(LS_POINTS, {}));
+  saveLS(LS_ACTIVE_QUESTS, loadLS(LS_ACTIVE_QUESTS, {}));
+  saveLS(LS_SEEDED, true);
+}
 
-  // page: 'gacha' | 'manage' | 'admin'
-  const [page, setPage] = useState('gacha');
+// ----- UI -----
+const TABS = [
+  { key: "gacha", label: "ガチャ" },
+  { key: "board", label: "掲示板" },
+  { key: "rank", label: "ランキング" },
+];
 
-  // ページ切り替えアニメーション用
-  const [pageAnimClass, setPageAnimClass] = useState('');
+export default function App() {
+  // seed
+  useEffect(() => seedIfNeeded(), []);
 
-  // 長押し拡大用
-  const [expandedCard, setExpandedCard] = useState(null);
-  const pressTimerRef = useRef(null);
+  // ---- hooks (ALL hooks must be before any conditional return) ----
+  // auth
+  const [loginName, setLoginName] = useState("");
+  const [loginPass, setLoginPass] = useState("");
+  const [auth, setAuth] = useState(() => loadLS(LS_AUTH, { isAuthed: false, user: "" }));
 
-  // 返信モーダル用
-  const [replyTargetCard, setReplyTargetCard] = useState(null);
-  const [replyText, setReplyText] = useState('');
-  const [cardReplies, setCardReplies] = useState({}); // { [cardId]: [{ text, createdAt }, ...] }
+  // app data
+  const [tab, setTab] = useState("gacha");
+  const [people, setPeople] = useState(() => loadLS(LS_PEOPLE, DEFAULT_PEOPLE));
+  const [posts, setPosts] = useState(() => loadLS(LS_POSTS, []));
+  const [pointsByUser, setPointsByUser] = useState(() => loadLS(LS_POINTS, {}));
+  const [activeQuestsByUser, setActiveQuestsByUser] = useState(() => loadLS(LS_ACTIVE_QUESTS, {}));
 
-  // パックカルーセル
-  const [activePackIndex, setActivePackIndex] = useState(0);
-  const touchStartXRef = useRef(null);
-  const activePack = PACKS[activePackIndex];
+  // gacha演出
+  const [isRolling, setIsRolling] = useState(false);
+  const [rollText, setRollText] = useState("ガチャ準備中…");
 
-  // 所持カード（[{ cardId, obtainedAt }]）
-  const [ownedCards, setOwnedCards] = useState([]);
+  // admin secret
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const clickCountRef = useRef(0);
+  const clickTimerRef = useRef(null);
 
-  // 秘密のクリック（タイトル5回でadmin）
-  const [secretClicks, setSecretClicks] = useState(0);
-  const secretTimerRef = useRef(null);
+  // board composer
+  const [postType, setPostType] = useState("chat");
+  const [withWhom, setWithWhom] = useState("");
+  const [postBody, setPostBody] = useState("");
 
-  // 初回：localStorage復元
-  useEffect(() => {
-    const storedAuth = window.localStorage.getItem(STORAGE_KEY_AUTH);
-    if (storedAuth === '1') {
-      setIsAuthenticated(true);
-    }
+  // admin people add
+  const [newDept, setNewDept] = useState("");
+  const [newName, setNewName] = useState("");
 
-    const stored = window.localStorage.getItem(STORAGE_KEY_LAST_TIME);
-    if (stored) {
-      const parsed = Number(stored);
-      if (!Number.isNaN(parsed)) setLastGachaTime(parsed);
-    }
+  // derived
+  const currentUser = auth?.user || "";
+  const isAuthenticated = !!auth?.isAuthed;
 
-    const storedOwned = window.localStorage.getItem(STORAGE_KEY_OWNED);
-    if (storedOwned) {
-      try {
-        const parsed = JSON.parse(storedOwned);
-        if (Array.isArray(parsed)) setOwnedCards(parsed);
-      } catch (e) {
-        console.error('Failed to parse owned cards', e);
-      }
-    }
+  const leaderboard = useMemo(() => {
+    const entries = Object.entries(pointsByUser || {})
+      .map(([u, p]) => ({ user: u, points: Number(p || 0) }))
+      .sort((a, b) => b.points - a.points || a.user.localeCompare(b.user, "ja"));
+    return entries;
+  }, [pointsByUser]);
 
-    const storedReplies = window.localStorage.getItem(STORAGE_KEY_REPLIES);
-    if (storedReplies) {
-      try {
-        const parsed = JSON.parse(storedReplies);
-        if (parsed && typeof parsed === 'object') {
-          setCardReplies(parsed);
-        }
-      } catch (e) {
-        console.error('Failed to parse card replies', e);
-      }
-    }
-  }, []);
+  // persist
+  useEffect(() => saveLS(LS_AUTH, auth), [auth]);
+  useEffect(() => saveLS(LS_PEOPLE, people), [people]);
+  useEffect(() => saveLS(LS_POSTS, posts), [posts]);
+  useEffect(() => saveLS(LS_POINTS, pointsByUser), [pointsByUser]);
+  useEffect(() => saveLS(LS_ACTIVE_QUESTS, activeQuestsByUser), [activeQuestsByUser]);
 
-  // クールタイム管理
-  useEffect(() => {
-    const tick = () => {
-      const now = Date.now();
-      if (lastGachaTime == null) {
-        setCooldownLabel('準備完了！');
-        setButtonDisabled(false);
-        return;
-      }
-      const elapsed = now - lastGachaTime;
-      const remain = COOLDOWN_MS - elapsed;
-      if (remain <= 0) {
-        setCooldownLabel('準備完了！');
-        setButtonDisabled(false);
-      } else {
-        setCooldownLabel(formatTime(remain));
-        setButtonDisabled(true);
-      }
-    };
+  // ---- helpers inside component ----
+  function personLabel(pid) {
+    const p = (people || []).find((x) => x.id === pid);
+    return p ? `${p.dept} ${p.name}` : "";
+  }
 
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, [lastGachaTime]);
+  function getHand() {
+    const hand = activeQuestsByUser[currentUser];
+    return Array.isArray(hand) ? hand : [];
+  }
 
-  // ページが変わるたびにアニメーション用クラスを付ける
-  useEffect(() => {
-    setPageAnimClass('page-switch');
-    const timer = setTimeout(() => {
-      setPageAnimClass('');
-    }, 320); // CSSの0.28s + 余裕
-    return () => clearTimeout(timer);
-  }, [page]);
+  function setHand(hand) {
+    setActiveQuestsByUser((prev) => ({ ...(prev || {}), [currentUser]: hand }));
+  }
 
-  // トースト
-  const showToast = (message) => {
-    setToastMsg(message);
-    setToastVisible(true);
-    setTimeout(() => setToastVisible(false), 1800);
-  };
-
-  // 所持カード追加
-  const addOwnedCards = (cardList) => {
-    const now = Date.now();
-    const newEntries = cardList
-      .filter(Boolean)
-      .map((card) => ({ cardId: card.id, obtainedAt: now }));
-    if (newEntries.length === 0) return;
-
-    setOwnedCards((prev) => {
-      const updated = [...prev, ...newEntries];
-      window.localStorage.setItem(STORAGE_KEY_OWNED, JSON.stringify(updated));
-      return updated;
+  function addPoints(delta) {
+    setPointsByUser((prev) => {
+      const base = Number((prev || {})[currentUser] || 0);
+      return { ...(prev || {}), [currentUser]: base + Number(delta || 0) };
     });
-  };
+  }
 
-  // カードタップ → 返信モーダルを開く
-  const handleCardClick = (cardData) => {
-    setReplyTargetCard(cardData);
-    setReplyText('');
-  };
-
-  // 返信保存
-  const handleReplySubmit = () => {
-    const text = replyText.trim();
-    if (!text) {
-      showToast('返信内容を入力してください');
-      return;
+  function ensureHand() {
+    const hand = getHand();
+    if (hand.length !== QUEST_HAND_SIZE) {
+      setHand(buildQuestHand(people, QUEST_HAND_SIZE));
     }
-    if (!replyTargetCard) return;
+  }
 
-    const cardId = replyTargetCard.id;
-    const now = Date.now();
+  // after login: ensure existing hand shape (but don't auto-roll animation)
+  useEffect(() => {
+    if (!isAuthenticated || !currentUser) return;
+    ensureHand();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, currentUser, people]);
 
-    setCardReplies((prev) => {
-      const prevList = prev[cardId] || [];
-      const nextList = [...prevList, { text, createdAt: now }];
-      const next = { ...prev, [cardId]: nextList };
-      window.localStorage.setItem(STORAGE_KEY_REPLIES, JSON.stringify(next));
-      return next;
-    });
-
-    setReplyText('');
-    showToast('返信を追加しました');
-  };
-
-  // 長押しで拡大表示
-  const handlePressStart = (cardData) => {
-    if (pressTimerRef.current) clearTimeout(pressTimerRef.current);
-    pressTimerRef.current = window.setTimeout(() => {
-      setExpandedCard(cardData);
-      pressTimerRef.current = null;
-    }, LONG_PRESS_MS);
-  };
-
-  const handlePressEnd = () => {
-    if (pressTimerRef.current) {
-      clearTimeout(pressTimerRef.current);
-      pressTimerRef.current = null;
-    }
-  };
-
-  // パック説明
-  const handlePackClick = () => {
-    showToast(`${activePack.name}：パックを開けてカードを手に入れよう！`);
-  };
-
-  // パック切替
-  const changePack = (delta) => {
-    setActivePackIndex((prev) => {
-      const len = PACKS.length;
-      return (prev + delta + len) % len;
-    });
-  };
-
-  // カルーセルスワイプ
-  const handleCarouselTouchStart = (e) => {
-    if (e.touches && e.touches.length > 0) {
-      touchStartXRef.current = e.touches[0].clientX;
-    }
-  };
-
-  const handleCarouselTouchEnd = (e) => {
-    if (touchStartXRef.current == null) return;
-    const endX =
-      e.changedTouches && e.changedTouches.length > 0
-        ? e.changedTouches[0].clientX
-        : touchStartXRef.current;
-    const dx = endX - touchStartXRef.current;
-    const threshold = 40;
-    if (dx > threshold) changePack(-1);
-    else if (dx < -threshold) changePack(1);
-    touchStartXRef.current = null;
-  };
-
-  // ガチャ
-  const handleGacha = () => {
-    const now = Date.now();
-
-    if (lastGachaTime != null) {
-      const elapsed = now - lastGachaTime;
-      const remain = COOLDOWN_MS - elapsed;
-      if (remain > 0) {
-        showToast('まだクールタイム中です。少し待ってね。');
-        return;
-      }
-    }
-
-    setIsOpening(true);
-    setPackShaking(true);
-    setButtonDisabled(true);
-    setCards([]);
-
-    const COUNT = 5;
-    const rarities = [];
-    for (let i = 0; i < COUNT; i++) rarities.push(rollRarity());
-    const cardList = rarities.map((rarity) => getRandomCardByRarity(rarity));
-
-    const baseTime = Date.now();
-    const newCards = cardList.map((c, idx) => ({
-      id: `${baseTime}-${idx}`,
-      data: c,
-      visible: false,
-    }));
-    setCards(newCards);
-
-    const animationDuration = 1300;
+  function runGachaAnimationThen(fnAfter) {
+    setIsRolling(true);
+    const lines = ["ガチャ起動…", "候補を生成中…", "マッチング中…", "完成！"];
+    let i = 0;
+    setRollText(lines[i]);
+    const t = setInterval(() => {
+      i += 1;
+      if (i < lines.length) setRollText(lines[i]);
+    }, 350);
 
     setTimeout(() => {
-      setIsOpening(false);
-      setPackShaking(false);
+      clearInterval(t);
+      fnAfter?.();
+      setIsRolling(false);
+    }, 1300);
+  }
 
-      newCards.forEach((_, idx) => {
-        setTimeout(
-          () =>
-            setCards((prev) =>
-              prev.map((card, i) =>
-                i === idx ? { ...card, visible: true } : card
-              )
-            ),
-          200 + idx * 120
-        );
-      });
-
-      let ssrCount = 0;
-      let srCount = 0;
-      cardList.forEach((card) => {
-        if (!card) return;
-        if (card.rarity === 'SSR') ssrCount++;
-        else if (card.rarity === 'SR') srCount++;
-      });
-
-      const infoText = [];
-      infoText.push(
-        `${activePack.name}から ${COUNT}枚のほっこりカードを開封しました。`
-      );
-      if (ssrCount > 0) infoText.push(`SSR: ${ssrCount}枚`);
-      if (srCount > 0) infoText.push(`SR: ${srCount}枚`);
-      if (ssrCount === 0 && srCount === 0) {
-        infoText.push('今回はすべてRでした。また誰かをほっこりさせに行こう。');
-      }
-      setResultInfoText(infoText.join(' ／ '));
-
-      if (ssrCount > 0) {
-        showToast(`SSR ${ssrCount}枚！特別なほっこりが届きました。`);
-      } else if (srCount > 0) {
-        showToast(`SR ${srCount}枚！次は伝説級のほっこりを狙おう。`);
-      } else {
-        showToast('次のパックに期待！');
-      }
-
-      // 所持カードに保存
-      addOwnedCards(cardList);
-
-      setLastGachaTime(now);
-      window.localStorage.setItem(STORAGE_KEY_LAST_TIME, String(now));
-    }, animationDuration);
-  };
-
-  // タイトル秘密クリック（2秒以内に5回）
-  const handleSecretTitleClick = () => {
-    if (!secretTimerRef.current) {
-      secretTimerRef.current = setTimeout(() => {
-        setSecretClicks(0);
-        secretTimerRef.current = null;
-      }, 2000);
-    }
-    setSecretClicks((prev) => {
-      const next = prev + 1;
-      if (next >= 5) {
-        setPage('admin');
-        setSecretClicks(0);
-        if (secretTimerRef.current) {
-          clearTimeout(secretTimerRef.current);
-          secretTimerRef.current = null;
-        }
-        showToast('管理者ページを開きました');
-      }
-      return next;
-    });
-  };
-
-  // ログイン処理
-  const handleLoginSubmit = (e) => {
+  // ---- actions ----
+  function handleLogin(e) {
     e.preventDefault();
-    if (loginUser === VALID_USER && loginPassword === VALID_PASSWORD) {
-      setIsAuthenticated(true);
-      setLoginError('');
-      window.localStorage.setItem(STORAGE_KEY_AUTH, '1');
-      showToast('ログインしました');
-    } else {
-      setLoginError('ユーザー名またはパスワードが違います');
+    const u = loginName.trim();
+    if (!u) return alert("ユーザー名を入力してください");
+    if (loginPass !== PASSWORD) return alert("パスワードが違います");
+    setAuth({ isAuthed: true, user: u });
+    setTab("gacha");
+    setLoginPass("");
+  }
+
+  function logout() {
+    setAuth({ isAuthed: false, user: "" });
+    setLoginName("");
+    setLoginPass("");
+    setIsAdminOpen(false);
+  }
+
+  function secretAdminClick() {
+    clickCountRef.current += 1;
+    if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = setTimeout(() => (clickCountRef.current = 0), 2000);
+
+    if (clickCountRef.current >= 5) {
+      clickCountRef.current = 0;
+      setIsAdminOpen((v) => !v);
+      setTab("board");
     }
-  };
+  }
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    window.localStorage.removeItem(STORAGE_KEY_AUTH);
-    showToast('ログアウトしました');
-  };
+  function gachaPull() {
+    runGachaAnimationThen(() => {
+      setHand(buildQuestHand(people, QUEST_HAND_SIZE));
+    });
+  }
 
-  // ログインしていなければログイン画面だけ出す
+  function submitPost(e) {
+    e.preventDefault();
+    if (!isAuthenticated) return;
+
+    const body = postBody.trim();
+    if (!body) return alert("投稿内容を入力してください");
+
+    const withId = withWhom || "";
+    const post = {
+      id: uid("post"),
+      createdAt: nowISO(),
+      author: currentUser,
+      type: postType, // chat | complete | lunch
+      withWhomPersonId: withId || null,
+      withWhomLabel: withId ? personLabel(withId) : "",
+      body,
+    };
+    setPosts((prev) => [post, ...(prev || [])]);
+
+    // reroll on lunch post
+    if (isLunchReroll(post)) {
+      // lunch reroll should also feel like gacha -> use animation
+      runGachaAnimationThen(() => setHand(buildQuestHand(people, QUEST_HAND_SIZE)));
+    }
+
+    // auto completion check (hit one of 5)
+    const hand = getHand().filter((q) => q?.status === "active");
+    const hit = hand.find((q) => postCompletesQuest({ post, quest: q }));
+
+    if (hit) {
+      addPoints(hit.points);
+
+      // replace completed quest with a new one (keep 5)
+      const remaining = hand.filter((q) => q.id !== hit.id);
+      const next = [...remaining, buildQuest(people)];
+      setHand(next);
+      setTab("gacha");
+    }
+
+    setPostBody("");
+    setWithWhom("");
+    setPostType("chat");
+  }
+
+  function addPerson(e) {
+    e.preventDefault();
+    const dept = newDept.trim();
+    const name = newName.trim();
+    if (!dept || !name) return alert("部署と名前を入力してください");
+    setPeople((prev) => [{ id: uid("p"), dept, name }, ...(prev || [])]);
+    setNewDept("");
+    setNewName("");
+  }
+
+  function removePerson(pid) {
+    if (!confirm("この人物を削除しますか？")) return;
+    setPeople((prev) => (prev || []).filter((p) => p.id !== pid));
+  }
+
+  // ---- render (now safe to conditionally return) ----
   if (!isAuthenticated) {
     return (
-      <div className='app-root'>
-        <div className='app login-page'>
-          <h1 className='login-title'>Hoccoo ログイン</h1>
-          <p className='login-subtitle'>
-            社内向けアプリのため、ログインが必要です。
-          </p>
-          <form className='login-form' onSubmit={handleLoginSubmit}>
-            <label className='login-label'>
-              ユーザー名
-              <input
-                type='text'
-                value={loginUser}
-                onChange={(e) => setLoginUser(e.target.value)}
-                className='login-input'
-                placeholder='User'
-              />
+      <div className="hq-root">
+        <div className="hq-card">
+          <h1 className="hq-title" onClick={secretAdminClick} role="button" tabIndex={0}>
+            {APP_TITLE}
+          </h1>
+          <p className="hq-subtitle">掲示板投稿でクエストを達成して、部署を越えた会話を増やす。</p>
+
+          <form className="hq-login" onSubmit={handleLogin}>
+            <label className="hq-field">
+              <span>ユーザー名</span>
+              <input value={loginName} onChange={(e) => setLoginName(e.target.value)} placeholder="例）T124041" />
             </label>
-            <label className='login-label'>
-              パスワード
-              <input
-                type='password'
-                value={loginPassword}
-                onChange={(e) => setLoginPassword(e.target.value)}
-                className='login-input'
-                placeholder='Passward'
-              />
+            <label className="hq-field">
+              <span>パスワード</span>
+              <input type="password" value={loginPass} onChange={(e) => setLoginPass(e.target.value)} placeholder="Suwarika" />
             </label>
-            {loginError && <div className='login-error'>{loginError}</div>}
-            <button type='submit' className='btn-main login-button'>
+            <button className="hq-btn hq-btn--primary" type="submit">
               ログイン
             </button>
           </form>
+
+          <div className="hq-hint">
+            <div className="hq-hint__title">使い方メモ</div>
+            <ul>
+              <li>ガチャを押す → 演出後に「5枚クエスト」が出る</li>
+              <li>掲示板の投稿で自動判定 → 達成するとポイント加算＆クエスト1枚補充</li>
+              <li>どれもしたくない時は「ランチ（引き直し）」投稿で5枚全部を引き直し</li>
+            </ul>
+          </div>
+
+          <div className="hq-loginhint">※ デモ用：ユーザー名は任意（ランキングに表示されます）</div>
         </div>
       </div>
     );
   }
 
+  const myPoints = Number(pointsByUser[currentUser] || 0);
+  const hand = getHand().filter((q) => q?.status === "active");
+
   return (
-    <div className='app-root'>
-      <div className='app'>
-        {/* トースト */}
-        <div className={`toast ${toastVisible ? 'show' : ''}`}>{toastMsg}</div>
-
-        {/* 開封中オーバーレイ */}
-        <div className={`overlay ${isOpening ? 'show' : ''}`}>
-          <div className='overlay-text'>開封中…</div>
-          <div className='loading-orbs'>
-            <span></span>
-            <span></span>
-            <span></span>
-          </div>
-          <div className='overlay-sub'>
-            パックをふわふわ振って、ほっこりカードを整えています
-          </div>
-        </div>
-
-        {/* ヘッダー */}
-        <header className='app-header'>
-          <div className='title-block'>
-            <div className='title' onClick={handleSecretTitleClick}>
-              Hoccoo
-            </div>
-            <div className='subtitle'>
-              社員同士の「ありがとう」「おつかれさま」を集める ガチャ
-            </div>
-            {page === 'admin' && (
-              <div className='admin-indicator'>管理者ビュー</div>
-            )}
-          </div>
-
-          <div className='header-right'>
-            {page === 'gacha' && (
-              <div className='cooldown'>
-                次の開封まで: <strong>{cooldownLabel}</strong>
-              </div>
-            )}
-            <div className='nav-buttons'>
-              <button
-                className={`nav-tab ${page === 'gacha' ? 'active' : ''}`}
-                onClick={() => setPage('gacha')}
-              >
-                ガチャ
-              </button>
-              <button
-                className={`nav-tab ${page === 'manage' ? 'active' : ''}`}
-                onClick={() => setPage('manage')}
-              >
-                カード管理
-              </button>
-              {/* admin へのタブは表示しない（隠し機能） */}
-              <button className='nav-tab logout-tab' onClick={handleLogout}>
-                ログアウト
-              </button>
+    <div className="hq-root">
+      <div className="hq-card">
+        <header className="hq-topbar">
+          <div className="hq-brand">
+            <h1 className="hq-title hq-title--small" onClick={secretAdminClick} role="button" tabIndex={0}>
+              {APP_TITLE}
+            </h1>
+            <div className="hq-userline">
+              <span className="hq-chip">ログイン中：{currentUser}</span>
+              <span className="hq-chip">合計ポイント：{myPoints}</span>
             </div>
           </div>
+          <button className="hq-btn" onClick={logout}>
+            ログアウト
+          </button>
         </header>
 
-        {/* ページ切替（アニメーション付き） */}
-        <div className={`page-container ${pageAnimClass}`}>
-          {page === 'gacha' && (
-            <div className='layout'>
-              {/* 左：パック＆ボタン */}
-              <div className='left-panel'>
-                <div className='pack-area'>
-                  <div
-                    className='pack-carousel'
-                    onTouchStart={handleCarouselTouchStart}
-                    onTouchEnd={handleCarouselTouchEnd}
-                  >
-                    {PACKS.map((pack, idx) => {
-                      const offset = idx - activePackIndex;
-                      let posClass = 'pack-pos-hidden';
-                      if (offset === 0) posClass = 'pack-pos-center';
-                      else if (offset === -1 || offset === PACKS.length - 1)
-                        posClass = 'pack-pos-left';
-                      else if (offset === 1 || offset === -(PACKS.length - 1))
-                        posClass = 'pack-pos-right';
-
-                      const isCenter = offset === 0;
-
-                      return (
-                        <div
-                          key={pack.id}
-                          className={`pack-card ${posClass}`}
-                          onClick={() => {
-                            if (isCenter) handlePackClick();
-                            else setActivePackIndex(idx);
-                          }}
-                        >
-                          <div
-                            className={`pack ${pack.themeClass} ${
-                              packShaking && isCenter ? 'shake' : ''
-                            }`}
-                          >
-                            <div className='pack-label'>{pack.name}</div>
-                            <div className='pack-sub'>{pack.subtitle}</div>
-                            <div className='pack-orb'></div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                  <div className='pack-glow'></div>
-                  <div className='pack-hint'>
-                    左右にスワイプしてパックを切り替え
-                  </div>
-                </div>
-
-                <div className='buttons'>
-                  <button
-                    className='btn-main'
-                    onClick={handleGacha}
-                    disabled={buttonDisabled || isOpening}
-                  >
-                    {activePack.name}を開封する（5枚）
-                  </button>
-                </div>
-
-                <div className='odds-text'>
-                  ★★★★★(LEGEND): 0.1% ／ ★★★★(SSR): 5% ／ ★★★(SR): 15% ／ ★★(R): 80%
-                  <br />
-                  1回の開封でほっこりカード5枚排出
-                </div>
-              </div>
-
-              {/* 右：開封結果 */}
-              <div className='right-panel'>
-                <div className='result-header'>
-                  <div className='result-title'>開封結果</div>
-                  <div className='result-info'>{resultInfoText}</div>
-                </div>
-                <div className='result-grid'>
-                  {cards.map((c) => {
-                    if (!c.data) return null;
-
-                    const rarity = c.data.rarity;
-                    const rarityClass =
-                      rarity === 'LEGEND'
-                        ? 'card-legend'
-                        : rarity === 'SSR'
-                        ? 'card-ssr'
-                        : rarity === 'SR'
-                        ? 'card-sr'
-                        : 'card-r';
-
-                    const rarityText =
-                      rarity === 'LEGEND'
-                        ? '★★★★★ LEGEND'
-                        : rarity === 'SSR'
-                        ? '★★★★ SSR'
-                        : rarity === 'SR'
-                        ? '★★★ SR'
-                        : '★★ R';
-
-                    const rarityLabelClass =
-                      rarity === 'LEGEND'
-                        ? 'rarity-legend'
-                        : rarity === 'SSR'
-                        ? 'rarity-ssr'
-                        : rarity === 'SR'
-                        ? 'rarity-sr'
-                        : 'rarity-r';
-
-                    return (
-                      <div
-                        key={c.id}
-                        className={`card ${rarityClass} ${
-                          c.visible ? 'show' : ''
-                        }`}
-                        onClick={() => handleCardClick(c.data)}
-                        onMouseDown={() => handlePressStart(c.data)}
-                        onMouseUp={handlePressEnd}
-                        onMouseLeave={handlePressEnd}
-                        onTouchStart={() => handlePressStart(c.data)}
-                        onTouchEnd={handlePressEnd}
-                        onTouchCancel={handlePressEnd}
-                      >
-                        <div
-                          className={`card-rarity-tag ${rarityLabelClass}`}
-                        >
-                          {rarityText}
-                        </div>
-                        <div className='card-name'>{c.data.name}</div>
-                        <div className='card-body'>
-                          {c.data.image && (
-                            <img
-                              src={c.data.image}
-                              alt={c.data.name}
-                              className='card-image'
-                              draggable='false'
-                            />
-                          )}
-                          {c.data.message && (
-                            <p className='card-message'>{c.data.message}</p>
-                          )}
-                        </div>
-                        <div className='card-footer'>
-                          <span>{c.data.category || c.data.type}</span>
-                          <span>{c.data.series}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {page === 'manage' && (
-            <CardManagePage
-              onBack={() => setPage('gacha')}
-              ownedCards={ownedCards}
-            />
-          )}
-
-          {page === 'admin' && (
-            <AdminCardListPage onBack={() => setPage('gacha')} />
-          )}
-        </div>
-
-        {/* 長押しモーダル（拡大表示） */}
-        {expandedCard && (
-          <div
-            className='card-modal-backdrop'
-            onClick={() => setExpandedCard(null)}
-          >
-            <div className='card-modal' onClick={(e) => e.stopPropagation()}>
-              <div className='card-modal-header'>
-                <span className='card-modal-title'>{expandedCard.name}</span>
-                <button
-                  className='card-modal-close'
-                  onClick={() => setExpandedCard(null)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className='card-modal-body'>
-                {expandedCard.image && (
-                  <img
-                    src={expandedCard.image}
-                    alt={expandedCard.name}
-                    className='card-modal-image'
-                    draggable='false'
-                  />
-                )}
-                <div className='card-modal-meta'>
-                  <span
-                    className={`manage-badge rarity-${expandedCard.rarity}`}
-                  >
-                    {expandedCard.rarity}
-                  </span>
-                  {expandedCard.category && (
-                    <span className='manage-badge category'>
-                      {expandedCard.category}
-                    </span>
-                  )}
-                  <span className='manage-badge series'>
-                    {expandedCard.series}
-                  </span>
-                </div>
-                {expandedCard.message && (
-                  <p className='card-modal-message'>
-                    {expandedCard.message}
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* 返信モーダル */}
-        {replyTargetCard && (
-          <div
-            className='card-modal-backdrop'
-            onClick={() => setReplyTargetCard(null)}
-          >
-            <div className='card-modal' onClick={(e) => e.stopPropagation()}>
-              <div className='card-modal-header'>
-                <span className='card-modal-title'>
-                  {replyTargetCard.name} への返信
-                </span>
-                <button
-                  className='card-modal-close'
-                  onClick={() => setReplyTargetCard(null)}
-                >
-                  ×
-                </button>
-              </div>
-              <div className='card-modal-body'>
-                {replyTargetCard.message && (
-                  <p className='card-modal-message original-message'>
-                    {replyTargetCard.message}
-                  </p>
-                )}
-
-                <div className='reply-list'>
-                  <div className='reply-list-title'>これまでの返信</div>
-                  {(
-                    cardReplies[replyTargetCard.id] || []
-                  ).length === 0 ? (
-                    <div className='reply-empty'>
-                      まだ返信はありません。最初の一言を送ってみましょう。
-                    </div>
-                  ) : (
-                    <ul className='reply-items'>
-                      {cardReplies[replyTargetCard.id].map((r, idx) => (
-                        <li key={idx} className='reply-item'>
-                          <div className='reply-text'>{r.text}</div>
-                          <div className='reply-meta'>
-                            {new Date(r.createdAt).toLocaleString('ja-JP', {
-                              year: 'numeric',
-                              month: '2-digit',
-                              day: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </div>
-
-                <div className='reply-form'>
-                  <textarea
-                    className='reply-textarea'
-                    placeholder='このカードをくれた人に、感謝やひとことを返してみましょう'
-                    value={replyText}
-                    onChange={(e) => setReplyText(e.target.value)}
-                  />
-                  <button
-                    className='btn-main reply-button'
-                    type='button'
-                    onClick={handleReplySubmit}
-                  >
-                    返信を追加
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/**
- * カード管理ページ（ユーザーの所持コレクション）
- */
-function CardManagePage({ onBack, ownedCards }) {
-  const summarized = useMemo(() => {
-    const map = new Map();
-    ownedCards.forEach(({ cardId, obtainedAt }) => {
-      const current = map.get(cardId) || {
-        cardId,
-        count: 0,
-        lastObtained: 0,
-      };
-      current.count += 1;
-      if (obtainedAt > current.lastObtained) current.lastObtained = obtainedAt;
-      map.set(cardId, current);
-    });
-
-    const result = [];
-    map.forEach((v) => {
-      const cardDef = cardPool.find((c) => c.id === v.cardId);
-      if (!cardDef) return;
-      result.push({ ...v, card: cardDef });
-    });
-
-    const rarityOrder = { SSR: 0, SR: 1, R: 2 };
-    result.sort((a, b) => {
-      const ra = rarityOrder[a.card.rarity] ?? 99;
-      const rb = rarityOrder[b.card.rarity] ?? 99;
-      if (ra !== rb) return ra - rb;
-      return String(a.card.name).localeCompare(String(b.card.name), 'ja');
-    });
-
-    return result;
-  }, [ownedCards]);
-
-  return (
-    <div className='manage-page'>
-      <div className='manage-header'>
-        <h2 className='manage-title'>ほっこりカードコレクション</h2>
-        <p className='manage-desc'>
-          これまでガチャで手に入れたカードの保管場所です。
-          <br />
-          同じカードを複数枚引いた場合は「所持枚数」としてカウントされます。
-        </p>
-      </div>
-
-      <div className='manage-section'>
-        <h3 className='manage-section-title'>所持カード一覧</h3>
-        {summarized.length === 0 ? (
-          <p className='manage-desc-small'>
-            まだカードを所持していません。ガチャでカードを集めましょう！
-          </p>
-        ) : (
-          <div className='manage-card-list'>
-            {summarized.map(({ cardId, count, lastObtained, card }) => (
-              <div key={cardId} className='manage-card'>
-                {card.image && (
-                  <div className='manage-card-image'>
-                    <img src={card.image} alt={card.name} />
-                  </div>
-                )}
-                <div className='manage-card-content'>
-                  <div className='manage-card-name'>
-                    {card.name}
-                    <span className='manage-card-count'> × {count}</span>
-                  </div>
-                  <div className='manage-card-meta'>
-                    <span className={`manage-badge rarity-${card.rarity}`}>
-                      {card.rarity}
-                    </span>
-                    {card.category && (
-                      <span className='manage-badge category'>
-                        {card.category}
-                      </span>
-                    )}
-                    <span className='manage-badge series'>{card.series}</span>
-                  </div>
-                  {card.message && (
-                    <p className='manage-card-message'>{card.message}</p>
-                  )}
-                  <div className='manage-card-footnote'>
-                    最終入手:{' '}
-                    {new Date(lastObtained).toLocaleString('ja-JP', {
-                      year: 'numeric',
-                      month: '2-digit',
-                      day: '2-digit',
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className='manage-footer'>
-        <button className='btn-sub' onClick={onBack}>
-          ガチャ画面に戻る
-        </button>
-      </div>
-    </div>
-  );
-}
-
-/**
- * 管理者向け：全カード一覧（cards.json）
- * タイトル5回クリックで表示
- */
-function AdminCardListPage({ onBack }) {
-  return (
-    <div className='manage-page'>
-      <div className='manage-header'>
-        <h2 className='manage-title'>管理者用カード一覧</h2>
-        <p className='manage-desc'>
-          cards.json に定義されている全ての排出対象カードの一覧です。
-          <br />
-          レアリティやカテゴリのバランス確認などに使用します。
-        </p>
-      </div>
-
-      <div className='manage-section'>
-        <h3 className='manage-section-title'>全カード（マスタ）</h3>
-        <div className='manage-card-list'>
-          {cardPool.map((card) => (
-            <div key={card.id} className='manage-card'>
-              {card.image && (
-                <div className='manage-card-image'>
-                  <img src={card.image} alt={card.name} />
-                </div>
-              )}
-              <div className='manage-card-content'>
-                <div className='manage-card-name'>
-                  {card.name}
-                  <span className='manage-card-count admin-id'>
-                    （ID: {card.id}）
-                  </span>
-                </div>
-                <div className='manage-card-meta'>
-                  <span className={`manage-badge rarity-${card.rarity}`}>
-                    {card.rarity}
-                  </span>
-                  {card.category && (
-                    <span className='manage-badge category'>
-                      {card.category}
-                    </span>
-                  )}
-                  <span className='manage-badge series'>{card.series}</span>
-                </div>
-                {card.message && (
-                  <p className='manage-card-message'>{card.message}</p>
-                )}
-              </div>
-            </div>
+        <nav className="hq-tabs">
+          {TABS.map((t) => (
+            <button key={t.key} className={`hq-tab ${tab === t.key ? "is-active" : ""}`} onClick={() => setTab(t.key)}>
+              {t.label}
+            </button>
           ))}
-        </div>
-      </div>
+        </nav>
 
-      <div className='manage-footer'>
-        <button className='btn-sub' onClick={onBack}>
-          ガチャ画面に戻る
-        </button>
+        {tab === "gacha" && (
+          <section className="hq-panel">
+            <div className="hq-panel__title">ガチャ（1回で5枚）</div>
+
+            {isRolling ? (
+              <div className="hq-rollstage" aria-live="polite">
+                <div className="hq-rollpack">
+                  <div className="hq-rollshine" />
+                  <div className="hq-rolllabel">{rollText}</div>
+                  <div className="hq-rolldots">
+                    <span className="hq-dot" />
+                    <span className="hq-dot" />
+                    <span className="hq-dot" />
+                  </div>
+                </div>
+              </div>
+            ) : hand.length === 0 ? (
+              <div className="hq-empty">
+                まだクエストがありません。下のボタンでガチャを引いてください。
+              </div>
+            ) : (
+              <div className="hq-qgrid">
+                {hand.map((q) => (
+                  <div key={q.id} className="hq-qcard">
+                    <div className="hq-qmain">{q.text}</div>
+                    <div className="hq-qmeta">
+                      <span className="hq-badge">{q.actionLabel}</span>
+                      <span className="hq-badge">+{q.points}pt</span>
+                      <span className="hq-badge hq-badge--subtle">
+                        対象：{q.targetDept} {q.targetName}
+                      </span>
+                    </div>
+                    <div className="hq-qnote">※達成は「掲示板投稿」で自動判定（相手＋キーワード）</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* bottom buttons */}
+            <div className="hq-gachabottom">
+              <button className="hq-btn" onClick={() => setTab("board")} disabled={isRolling}>
+                掲示板で投稿して達成
+              </button>
+              <button className="hq-btn hq-btn--primary" onClick={gachaPull} disabled={isRolling}>
+                ガチャを引く（5枚）
+              </button>
+            </div>
+          </section>
+        )}
+
+        {tab === "board" && (
+          <section className="hq-panel">
+            <div className="hq-panel__title">社内掲示板</div>
+
+            {isAdminOpen && (
+              <div className="hq-admin">
+                <div className="hq-admin__title">管理者：人物リスト編集（タイトル5回クリックで開閉）</div>
+
+                <form className="hq-admin__form" onSubmit={addPerson}>
+                  <input value={newDept} onChange={(e) => setNewDept(e.target.value)} placeholder="部署（例：品質）" />
+                  <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="名前（例：山本）" />
+                  <button className="hq-btn hq-btn--primary" type="submit">
+                    追加
+                  </button>
+                </form>
+
+                <div className="hq-people">
+                  {(people || []).map((p) => (
+                    <div key={p.id} className="hq-personrow">
+                      <span className="hq-personchip">
+                        {p.dept} {p.name}
+                      </span>
+                      <button className="hq-btn hq-btn--danger" onClick={() => removePerson(p.id)}>
+                        削除
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <form className="hq-postform" onSubmit={submitPost}>
+              <div className="hq-row">
+                <label className="hq-field">
+                  <span>投稿タイプ</span>
+                  <select value={postType} onChange={(e) => setPostType(e.target.value)}>
+                    <option value="chat">雑談</option>
+                    <option value="complete">完了報告（クエスト達成）</option>
+                    <option value="lunch">ランチ（引き直し）</option>
+                  </select>
+                </label>
+
+                <label className="hq-field">
+                  <span>一緒に（クエスト判定のため推奨）</span>
+                  <select value={withWhom} onChange={(e) => setWithWhom(e.target.value)}>
+                    <option value="">未選択</option>
+                    {(people || []).map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.dept} {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              <label className="hq-field">
+                <span>本文</span>
+                <textarea
+                  value={postBody}
+                  onChange={(e) => setPostBody(e.target.value)}
+                  placeholder="例）自販機でジュース買いました！/ ランチ行きました！/ 10分雑談できた など"
+                  rows={4}
+                />
+              </label>
+
+              <div className="hq-row">
+                <button className="hq-btn hq-btn--primary" type="submit" disabled={isRolling}>
+                  投稿
+                </button>
+                <div className="hq-smallnote">
+                  ・達成は<strong>「相手」</strong>と<strong>キーワード</strong>で自動判定します。<br />
+                  ・「ランチ（引き直し）」は<strong>5枚全部を引き直し</strong>します（ポイントは増えません）。
+                </div>
+              </div>
+            </form>
+
+            <div className="hq-postlist">
+              {(posts || []).map((p) => (
+                <article key={p.id} className="hq-post">
+                  <div className="hq-post__head">
+                    <div className="hq-post__author">{p.author}</div>
+                    <div className="hq-post__meta">
+                      <span className={`hq-tag hq-tag--${p.type}`}>{p.type === "chat" ? "雑談" : p.type === "complete" ? "完了報告" : "ランチ"}</span>
+                      {p.withWhomLabel ? <span className="hq-tag hq-tag--who">with {p.withWhomLabel}</span> : null}
+                      <span className="hq-time">{formatJPDate(p.createdAt)}</span>
+                    </div>
+                  </div>
+                  <div className="hq-post__body">{p.body}</div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {tab === "rank" && (
+          <section className="hq-panel">
+            <div className="hq-panel__title">ポイントランキング</div>
+            {leaderboard.length === 0 ? (
+              <div className="hq-empty">まだポイントがありません。</div>
+            ) : (
+              <div className="hq-rank">
+                {leaderboard.map((r, idx) => (
+                  <div key={r.user} className={`hq-rankrow ${r.user === currentUser ? "is-me" : ""}`}>
+                    <div className="hq-rankno">{idx + 1}</div>
+                    <div className="hq-rankuser">{r.user}</div>
+                    <div className="hq-rankpts">{r.points} pt</div>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="hq-smallnote">※デモではブラウザ内のローカル保存です。</div>
+          </section>
+        )}
       </div>
     </div>
   );
 }
-
-export default App;
