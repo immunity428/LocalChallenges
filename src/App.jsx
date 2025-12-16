@@ -1,13 +1,15 @@
 // App.jsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import './App.css';
+import boardSamplePosts from './boardPosts.json';
 
 /**
  * Hoccoo Quest (Demo)
  * - Gacha: one pull => 5 quests, with a short "演出" (animation) before revealing
  * - Completion: auto-detected from bulletin board posts (match target + keywords)
  * - No point history (only total points per user)
- * - Reroll: (1) button reroll in gacha (5枚)  (2) post "ランチ（引き直し）" with someone => reroll 5
+ * - Reroll: (1) "もう一度ガチャを引く" → 掲示板の投稿フォームへ誘導（ランチ投稿で引き直し）
+ *           (2) post "ランチ（引き直し）" with someone => reroll 5
  * - Storage: localStorage only (demo)
  */
 
@@ -43,20 +45,6 @@ function saveLS(key, value) {
 function uid(prefix = 'id') {
   return `${prefix}_${Math.random().toString(16).slice(2)}_${Date.now()}`;
 }
-function formatJPDate(iso) {
-  try {
-    const d = new Date(iso);
-    return d.toLocaleString('ja-JP', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
 function pick(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -80,53 +68,53 @@ const DEFAULT_PEOPLE = [
 // ----- Quest generation (AI-like templates) -----
 const ACTIONS = [
   {
-    key: "greet",
-    label: "すれ違い",
+    key: 'greet',
+    label: 'すれ違い',
     base: 4,
-    keywords: ["挨拶", "会釈", "声かけ", "一言"],
+    keywords: ['挨拶', '会釈', '声かけ', '一言'],
     templates: [
-      "【{dept}】{name}さんと、すれ違いに一言だけ交わしてみる",
-      "【{dept}】{name}さんと、会釈＋一言してみる",
+      '【{dept}】{name}さんと、すれ違いに一言だけ交わしてみる',
+      '【{dept}】{name}さんと、会釈＋一言してみる',
     ],
   },
   {
-    key: "same_space",
-    label: "同じ空間",
+    key: 'same_space',
+    label: '同じ空間',
     base: 6,
-    keywords: ["一緒に", "近く", "同じ", "少し"],
+    keywords: ['一緒に', '近く', '同じ', '少し'],
     templates: [
-      "【{dept}】{name}さんと、同じ空間に少しだけ居てみる",
-      "【{dept}】{name}さんと、近くで少しだけ過ごしてみる",
+      '【{dept}】{name}さんと、同じ空間に少しだけ居てみる',
+      '【{dept}】{name}さんと、近くで少しだけ過ごしてみる',
     ],
   },
   {
-    key: "drink",
-    label: "飲み物",
+    key: 'drink',
+    label: '飲み物',
     base: 9,
-    keywords: ["自販機", "飲み物", "お茶", "コーヒー"],
+    keywords: ['自販機', '飲み物', 'お茶', 'コーヒー'],
     templates: [
-      "【{dept}】{name}さんと、飲み物を取りに行くタイミングを合わせてみる",
-      "【{dept}】{name}さんと、飲み物の時間を少し重ねてみる",
+      '【{dept}】{name}さんと、飲み物を取りに行くタイミングを合わせてみる',
+      '【{dept}】{name}さんと、飲み物の時間を少し重ねてみる',
     ],
   },
   {
-    key: "lunch",
-    label: "ランチ",
+    key: 'lunch',
+    label: 'ランチ',
     base: 13,
-    keywords: ["ランチ", "昼", "ご飯"],
+    keywords: ['ランチ', '昼', 'ご飯'],
     templates: [
-      "【{dept}】{name}さんと、ランチのタイミングを合わせてみる",
-      "【{dept}】{name}さんと、同じ時間帯に昼休憩を取ってみる",
+      '【{dept}】{name}さんと、ランチのタイミングを合わせてみる',
+      '【{dept}】{name}さんと、同じ時間帯に昼休憩を取ってみる',
     ],
   },
   {
-    key: "overlap",
-    label: "時間の重なり",
+    key: 'overlap',
+    label: '時間の重なり',
     base: 15,
-    keywords: ["一緒に", "少し", "タイミング"],
+    keywords: ['一緒に', '少し', 'タイミング'],
     templates: [
-      "【{dept}】{name}さんと、何も決めずに少し時間を重ねてみる",
-      "【{dept}】{name}さんと、数分だけ行動を重ねてみる",
+      '【{dept}】{name}さんと、何も決めずに少し時間を重ねてみる',
+      '【{dept}】{name}さんと、数分だけ行動を重ねてみる',
     ],
   },
 ];
@@ -170,13 +158,7 @@ function postCompletesQuest({ post, quest }) {
 
   if (post.type === 'complete') {
     if (includesAny(post.body, action.keywords)) return true;
-    return includesAny(post.body, [
-      '達成',
-      '完了',
-      'できた',
-      'やった',
-      'クリア',
-    ]);
+    return includesAny(post.body, ['達成', '完了', 'できた', 'やった', 'クリア']);
   }
   return includesAny(post.body, action.keywords);
 }
@@ -194,35 +176,16 @@ function seedIfNeeded() {
     saveLS(LS_PEOPLE, DEFAULT_PEOPLE);
   }
 
-  const samplePosts = [
-    {
-      id: uid('post'),
-      createdAt: nowISO(),
-      author: 'demo',
-      type: 'chat',
-      withWhomPersonId: 'p_sales_1',
-      withWhomLabel: '営業 佐藤',
-      body: '今日、営業の佐藤さんと挨拶ついでに軽く雑談しました。最近忙しそう…！',
-    },
-    {
-      id: uid('post'),
-      createdAt: nowISO(),
-      author: 'demo',
-      type: 'lunch',
-      withWhomPersonId: 'p_dev_1',
-      withWhomLabel: '開発 田中',
-      body: '開発の田中さんと食堂でランチ（引き直し用の投稿例）',
-    },
-    {
-      id: uid('post'),
-      createdAt: nowISO(),
-      author: 'demo',
-      type: 'complete',
-      withWhomPersonId: 'p_hr_1',
-      withWhomLabel: '人事 鈴木',
-      body: '人事の鈴木さんと飲み物を買う（自販機ジュース）しました！達成！',
-    },
-  ];
+  const samplePosts = (Array.isArray(boardSamplePosts) ? boardSamplePosts : []).map((p) => ({
+    id: uid('post'),
+    createdAt: nowISO(),
+    author: p.author || 'demo',
+    type: p.type || 'chat',
+    withWhomPersonId: p.withWhomPersonId || '',
+    withWhomLabel: p.withWhomLabel || '',
+    body: p.body || '',
+    imageUrl: p.imageUrl || '',
+  }));
 
   const existingPosts = loadLS(LS_POSTS, []);
   if (!Array.isArray(existingPosts) || existingPosts.length === 0) {
@@ -232,6 +195,33 @@ function seedIfNeeded() {
   saveLS(LS_POINTS, loadLS(LS_POINTS, {}));
   saveLS(LS_ACTIVE_QUESTS, loadLS(LS_ACTIVE_QUESTS, {}));
   saveLS(LS_SEEDED, true);
+}
+
+function postTypeLabel(type) {
+  switch (type) {
+    case 'complete':
+      return '達成報告';
+    case 'lunch':
+      return 'ランチ';
+    case 'share':
+      return 'できごと共有';
+    case 'chat':
+    default:
+      return '雑談';
+  }
+}
+function fmtTime(iso) {
+  try {
+    const d = new Date(iso);
+    const yy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yy}/${mm}/${dd} ${hh}:${mi}`;
+  } catch {
+    return '';
+  }
 }
 
 // ----- UI -----
@@ -245,22 +235,17 @@ export default function App() {
   // seed
   useEffect(() => seedIfNeeded(), []);
 
-  // ---- hooks (ALL hooks must be before any conditional return) ----
   // auth
   const [loginName, setLoginName] = useState('');
   const [loginPass, setLoginPass] = useState('');
-  const [auth, setAuth] = useState(() =>
-    loadLS(LS_AUTH, { isAuthed: false, user: '' })
-  );
+  const [auth, setAuth] = useState(() => loadLS(LS_AUTH, { isAuthed: false, user: '' }));
 
   // app data
   const [tab, setTab] = useState('gacha');
   const [people, setPeople] = useState(() => loadLS(LS_PEOPLE, DEFAULT_PEOPLE));
   const [posts, setPosts] = useState(() => loadLS(LS_POSTS, []));
   const [pointsByUser, setPointsByUser] = useState(() => loadLS(LS_POINTS, {}));
-  const [activeQuestsByUser, setActiveQuestsByUser] = useState(() =>
-    loadLS(LS_ACTIVE_QUESTS, {})
-  );
+  const [activeQuestsByUser, setActiveQuestsByUser] = useState(() => loadLS(LS_ACTIVE_QUESTS, {}));
 
   // gacha演出
   const [isRolling, setIsRolling] = useState(false);
@@ -273,8 +258,12 @@ export default function App() {
 
   // board composer
   const [postType, setPostType] = useState('chat');
+  const [isComposerOpen, setIsComposerOpen] = useState(false);
   const [withWhom, setWithWhom] = useState('');
   const [postBody, setPostBody] = useState('');
+
+  // completion report screen
+  const [lastReport, setLastReport] = useState(null);
 
   // admin people add
   const [newDept, setNewDept] = useState('');
@@ -298,31 +287,21 @@ export default function App() {
   ];
 
   const leaderboard = useMemo(() => {
-    // 実ユーザー
     const real = Object.entries(pointsByUser || {})
-      .map(([u, p]) => ({
-        user: u,
-        points: Number(p || 0),
-        isDemo: false,
-      }))
+      .map(([u, p]) => ({ user: u, points: Number(p || 0), isDemo: false }))
       .sort((a, b) => b.points - a.points);
 
-    // デモ用従業員
     const demoEmployees = DEMO_EMPLOYEE_NAMES.map((name, i) => ({
       user: name,
-      points: 120 - i * 7, // いい感じに減衰
+      points: 120 - i * 7,
       isDemo: true,
     }));
 
-    // 実ユーザー優先 → デモで補完 → 上位10
     const merged = [...real];
     for (const d of demoEmployees) {
-      if (!merged.find((r) => r.user === d.user)) {
-        merged.push(d);
-      }
+      if (!merged.find((r) => r.user === d.user)) merged.push(d);
       if (merged.length >= 10) break;
     }
-
     return merged.slice(0, 10);
   }, [pointsByUser]);
 
@@ -331,10 +310,7 @@ export default function App() {
   useEffect(() => saveLS(LS_PEOPLE, people), [people]);
   useEffect(() => saveLS(LS_POSTS, posts), [posts]);
   useEffect(() => saveLS(LS_POINTS, pointsByUser), [pointsByUser]);
-  useEffect(
-    () => saveLS(LS_ACTIVE_QUESTS, activeQuestsByUser),
-    [activeQuestsByUser]
-  );
+  useEffect(() => saveLS(LS_ACTIVE_QUESTS, activeQuestsByUser), [activeQuestsByUser]);
 
   // ---- helpers inside component ----
   function personLabel(pid) {
@@ -346,7 +322,6 @@ export default function App() {
     const hand = activeQuestsByUser[currentUser];
     return Array.isArray(hand) ? hand : [];
   }
-
   function setHand(hand) {
     setActiveQuestsByUser((prev) => ({ ...(prev || {}), [currentUser]: hand }));
   }
@@ -365,7 +340,6 @@ export default function App() {
     }
   }
 
-  // after login: ensure existing hand shape (but don't auto-roll animation)
   useEffect(() => {
     if (!isAuthenticated || !currentUser) return;
     ensureHand();
@@ -407,6 +381,7 @@ export default function App() {
     setIsAdminOpen(false);
   }
 
+  // 管理者シークレット（5回でON/OFF）
   function secretAdminClick() {
     clickCountRef.current += 1;
     if (clickTimerRef.current) clearTimeout(clickTimerRef.current);
@@ -417,6 +392,27 @@ export default function App() {
       setIsAdminOpen((v) => !v);
       setTab('board');
     }
+  }
+
+  // ガチャ→掲示板→投稿フォーム（達成報告テンプレ）
+  function startQuestReportFromCard(q) {
+    if (!q) return;
+    const action = actionByKey(q.actionKey);
+    const kw = action?.keywords?.[0] ? action.keywords[0] : '達成';
+    setPostType('complete');
+    setWithWhom(q.targetPersonId || '');
+    setPostBody(`【達成報告】${q.text}\n${kw}できました！`);
+    setTab('board');
+    setIsComposerOpen(true);
+  }
+
+  // ★ここが今回の追加：もう一度引く → 投稿フォームへ（ランチ＝引き直し投稿）
+  function goToRerollPost() {
+    setPostType('lunch');
+    setWithWhom('');
+    setPostBody('【ランチ（引き直し）】誰かと一緒に過ごしました！\n（相手を選ぶと引き直しが発動します）');
+    setTab('board');
+    setIsComposerOpen(true);
   }
 
   function gachaPull() {
@@ -437,35 +433,41 @@ export default function App() {
       id: uid('post'),
       createdAt: nowISO(),
       author: currentUser,
-      type: postType, // chat | complete | lunch
+      type: postType,
       withWhomPersonId: withId || null,
       withWhomLabel: withId ? personLabel(withId) : '',
       body,
     };
+
     setPosts((prev) => [post, ...(prev || [])]);
 
-    // reroll on lunch post
+    // ランチ（引き直し）：相手が選ばれている場合のみ発動
     if (isLunchReroll(post)) {
-      // lunch reroll should also feel like gacha -> use animation
-      runGachaAnimationThen(() =>
-        setHand(buildQuestHand(people, QUEST_HAND_SIZE))
-      );
+      runGachaAnimationThen(() => setHand(buildQuestHand(people, QUEST_HAND_SIZE)));
     }
 
-    // auto completion check (hit one of 5)
+    // クエスト達成チェック
     const hand = getHand().filter((q) => q?.status === 'active');
     const hit = hand.find((q) => postCompletesQuest({ post, quest: q }));
 
     if (hit) {
       addPoints(hit.points);
 
-      // replace completed quest with a new one (keep 5)
       const remaining = hand.filter((q) => q.id !== hit.id);
       const next = [...remaining, buildQuest(people)];
       setHand(next);
-      setTab('gacha');
+
+      setLastReport({
+        quest: hit,
+        post: {
+          ...post,
+          withWhomLabel: post.withWhomPersonId ? personLabel(post.withWhomPersonId) : '',
+        },
+      });
+      setTab('report');
     }
 
+    setIsComposerOpen(false);
     setPostBody('');
     setWithWhom('');
     setPostType('chat');
@@ -486,62 +488,49 @@ export default function App() {
     setPeople((prev) => (prev || []).filter((p) => p.id !== pid));
   }
 
-  // ---- render (now safe to conditionally return) ----
+  // ---- render ----
   if (!isAuthenticated) {
     return (
-      <div className='hq-root'>
-        <div className='hq-card'>
-          <h1
-            className='hq-title'
-            onClick={secretAdminClick}
-            role='button'
-            tabIndex={0}
-          >
+      <div className="hq-root">
+        <div className="hq-card">
+          <h1 className="hq-title" onClick={secretAdminClick} role="button" tabIndex={0}>
             {APP_TITLE}
           </h1>
-          <p className='hq-subtitle'>
-            掲示板投稿でクエストを達成して、部署を越えた会話を増やす。
-          </p>
+          <p className="hq-subtitle">掲示板投稿でクエストを達成して、部署を越えた会話を増やす。</p>
 
-          <form className='hq-login' onSubmit={handleLogin}>
-            <label className='hq-field'>
+          <form className="hq-login" onSubmit={handleLogin}>
+            <label className="hq-field">
               <span>ユーザー名</span>
               <input
                 value={loginName}
                 onChange={(e) => setLoginName(e.target.value)}
-                placeholder='例)Taro'
+                placeholder="例)Taro"
               />
             </label>
-            <label className='hq-field'>
+            <label className="hq-field">
               <span>パスワード</span>
               <input
-                type='password'
+                type="password"
                 value={loginPass}
                 onChange={(e) => setLoginPass(e.target.value)}
-                placeholder='Suwarika'
+                placeholder="Suwarika"
               />
             </label>
-            <button className='hq-btn hq-btn--primary' type='submit'>
+            <button className="hq-btn hq-btn--primary" type="submit">
               ログイン
             </button>
           </form>
 
-          <div className='hq-hint'>
-            <div className='hq-hint__title'>使い方メモ</div>
+          <div className="hq-hint">
+            <div className="hq-hint__title">使い方メモ</div>
             <ul>
               <li>ガチャを押す → 演出後に「5枚クエスト」が出る</li>
-              <li>
-                掲示板の投稿で自動判定 → 達成するとポイント加算＆クエスト1枚補充
-              </li>
-              <li>
-                どれもしたくない時は「誰かとランチ（引き直し）」投稿で5枚全部を引き直し
-              </li>
+              <li>掲示板の投稿で自動判定 → 達成するとポイント加算＆クエスト1枚補充</li>
+              <li>「もう一度引く」は掲示板へ移動 →「ランチ（引き直し）」投稿で5枚全部を引き直し</li>
             </ul>
           </div>
 
-          <div className='hq-loginhint'>
-            ※ デモ用：ユーザー名は任意（ランキングに表示されます）
-          </div>
+          <div className="hq-loginhint">※ デモ用：ユーザー名は任意（ランキングに表示されます）</div>
         </div>
       </div>
     );
@@ -551,29 +540,29 @@ export default function App() {
   const hand = getHand().filter((q) => q?.status === 'active');
 
   return (
-    <div className='hq-root'>
-      <div className='hq-card'>
-        <header className='hq-topbar'>
-          <div className='hq-brand'>
+    <div className="hq-root">
+      <div className="hq-card">
+        <header className="hq-topbar">
+          <div className="hq-brand">
             <h1
-              className='hq-title hq-title--small'
+              className="hq-title hq-title--small"
               onClick={secretAdminClick}
-              role='button'
+              role="button"
               tabIndex={0}
             >
               {APP_TITLE}
             </h1>
-            <div className='hq-userline'>
-              <span className='hq-chip'>ログイン中：{currentUser}</span>
-              <span className='hq-chip'>合計ポイント：{myPoints}</span>
+            <div className="hq-userline">
+              <span className="hq-chip">ログイン中：{currentUser}</span>
+              <span className="hq-chip">合計ポイント：{myPoints}</span>
             </div>
           </div>
-          <button className='hq-btn' onClick={logout}>
+          <button className="hq-btn" onClick={logout}>
             ログアウト
           </button>
         </header>
 
-        <nav className='hq-tabs'>
+        <nav className="hq-tabs">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -586,214 +575,271 @@ export default function App() {
         </nav>
 
         {tab === 'gacha' && (
-          <section className='hq-panel'>
-            <div className='hq-panel__title'>ガチャ（1回で5枚）</div>
+          <section className="hq-panel">
+            <div className="hq-panel__title">ガチャ</div>
 
             {isRolling ? (
-              <div className='hq-rollstage' aria-live='polite'>
-                <div className='hq-rollpack'>
-                  <div className='hq-rollshine' />
-                  <div className='hq-rolllabel'>{rollText}</div>
-                  <div className='hq-rolldots'>
-                    <span className='hq-dot' />
-                    <span className='hq-dot' />
-                    <span className='hq-dot' />
+              <div className="hq-rollstage" aria-live="polite">
+                <div className="hq-rollpack">
+                  <div className="hq-rollshine" />
+                  <div className="hq-rolllabel">{rollText}</div>
+                  <div className="hq-rolldots">
+                    <span className="hq-dot" />
+                    <span className="hq-dot" />
+                    <span className="hq-dot" />
                   </div>
                 </div>
               </div>
             ) : hand.length === 0 ? (
-              <div className='hq-empty'>
-                まだクエストがありません。下のボタンでガチャを引いてください。
-              </div>
+              <div className="hq-empty">まだクエストがありません。下のボタンでガチャを引いてください。</div>
             ) : (
-              <div className='hq-qgrid'>
+              <div className="hq-qgrid">
                 {hand.map((q) => (
-                  <div key={q.id} className='hq-qcard'>
-                    <div className='hq-qmain'>{q.text}</div>
-                    <div className='hq-qmeta'>
-                      <span className='hq-badge'>{q.actionLabel}</span>
-                      <span className='hq-badge'>+{q.points}pt</span>
-                      <span className='hq-badge hq-badge--subtle'>
+                  <div key={q.id} className="hq-qcard">
+                    <div className="hq-qmain">{q.text}</div>
+                    <div className="hq-qmeta">
+                      <span className="hq-badge">{q.actionLabel}</span>
+                      <span className="hq-badge">+{q.points}pt</span>
+                      <span className="hq-badge hq-badge--subtle">
                         対象：{q.targetDept} {q.targetName}
                       </span>
                     </div>
-                    <div className='hq-qnote'></div>
+
+                    <div
+                      className="hq-gachabottom"
+                      style={{
+                        justifyContent: 'flex-start',
+                        borderTop: 'none',
+                        paddingTop: 12,
+                        marginTop: 10,
+                      }}
+                    >
+                      <button className="hq-btn hq-btn--primary" onClick={() => startQuestReportFromCard(q)}>
+                        掲示板で達成報告
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* bottom buttons */}
-            <div className='hq-gachabottom'>
-              <button
-                className='hq-btn'
-                onClick={() => setTab('board')}
-                disabled={isRolling}
-              >
-                掲示板で投稿して達成
+            <div className="hq-gachabottom">
+              {/* ★ここを変更：再ガチャではなく投稿フォームへ */}
+              <button className="hq-btn" onClick={goToRerollPost} disabled={isRolling}>
+                もう一度ガチャを引く
               </button>
-              <button
-                className='hq-btn hq-btn--primary'
-                onClick={gachaPull}
-                disabled={isRolling}
-              >
+
+              {/* 通常の5枚ガチャ（初回や通常更新用） */}
+              <button className="hq-btn hq-btn--primary" onClick={gachaPull} disabled={isRolling}>
                 ガチャを引く（5枚）
               </button>
             </div>
           </section>
         )}
 
-        {tab === 'board' && (
-          <section className='hq-panel'>
-            <div className='hq-panel__title'>社内掲示板</div>
+        {tab === 'report' && (
+          <section className="hq-panel">
+            <div className="hq-panel__title">達成報告</div>
 
-            {isAdminOpen && (
-              <div className='hq-admin'>
-                <div className='hq-admin__title'>
-                  管理者：人物リスト編集（タイトル5回クリックで開閉）
+            {!lastReport ? (
+              <div className="hq-empty">まだ達成報告はありません。</div>
+            ) : (
+              <div className="hq-report">
+                <div className="hq-report__top">
+                  <div className="hq-report__check">✓</div>
+                  <div>
+                    <div className="hq-report__title">クエスト達成を報告しました！</div>
+                    <div className="hq-smallnote">
+                      ここが「達成報告された画面」のイメージです（この内容が掲示板にも投稿されています）。
+                    </div>
+                  </div>
                 </div>
 
-                <form className='hq-admin__form' onSubmit={addPerson}>
-                  <input
-                    value={newDept}
-                    onChange={(e) => setNewDept(e.target.value)}
-                    placeholder='部署（例：品質）'
-                  />
-                  <input
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder='名前（例：山本）'
-                  />
-                  <button className='hq-btn hq-btn--primary' type='submit'>
-                    追加
-                  </button>
-                </form>
-
-                <div className='hq-people'>
-                  {(people || []).map((p) => (
-                    <div key={p.id} className='hq-personrow'>
-                      <span className='hq-personchip'>
-                        {p.dept} {p.name}
-                      </span>
-                      <button
-                        className='hq-btn hq-btn--danger'
-                        onClick={() => removePerson(p.id)}
-                      >
-                        削除
-                      </button>
+                <div className="hq-post" style={{ marginTop: 12 }}>
+                  <div className="hq-post__head">
+                    <div className="hq-post__author">{lastReport.post.author}</div>
+                    <div className="hq-post__meta">
+                      <span className="hq-tag hq-tag--complete">完了報告</span>
+                      <span className="hq-tag hq-tag--who">一緒に：{lastReport.post.withWhomLabel || '—'}</span>
+                      <span className="hq-time">{fmtTime(lastReport.post.createdAt)}</span>
                     </div>
-                  ))}
+                  </div>
+                  <div className="hq-post__body">{lastReport.post.body}</div>
+                </div>
+
+                <div className="hq-report__bottom">
+                  <div className="hq-report__reward">+{lastReport.quest.points}pt を獲得！</div>
+                  <div className="hq-row">
+                    <button className="hq-btn hq-btn--primary" onClick={() => setTab('gacha')}>
+                      次のクエストへ
+                    </button>
+                    <button className="hq-btn" onClick={() => setTab('board')}>
+                      掲示板で見る
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
+          </section>
+        )}
 
-            <form className='hq-postform' onSubmit={submitPost}>
-              <div className='hq-row'>
-                <label className='hq-field'>
-                  <span>投稿タイプ</span>
-                  <select
-                    value={postType}
-                    onChange={(e) => setPostType(e.target.value)}
-                  >
-                    <option value='chat'>雑談</option>
-                    <option value='complete'>完了報告（クエスト達成）</option>
-                    <option value='lunch'>誰かとランチ（引き直し）</option>
-                  </select>
-                </label>
+        {tab === 'board' && (
+          <section className="hq-panel">
+            <div
+              className="hq-panel__title hq-panel__title--clickable"
+              onClick={secretAdminClick}
+              title="（タイトルを5回クリックで管理者表示）"
+            >
+              社内掲示板
+            </div>
 
-                <label className='hq-field'>
-                  <span>一緒に（クエスト判定のため推奨）</span>
-                  <select
-                    value={withWhom}
-                    onChange={(e) => setWithWhom(e.target.value)}
-                  >
-                    <option value=''>未選択</option>
-                    {(people || []).map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.dept} {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              </div>
+            <div className="hq-postlist">
+              {(posts || []).length === 0 ? (
+                <div className="hq-empty">まだ投稿がありません。</div>
+              ) : (
+                [...posts]
+                  .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+                  .map((p) => (
+                    <div className="hq-post" key={p.id}>
+                      <div className="hq-post__meta">
+                        <div className="hq-post__type">{postTypeLabel(p.type)}</div>
+                        <div className="hq-post__who">{p.withWhomLabel ? `with ${p.withWhomLabel}` : ''}</div>
+                        <div className="hq-post__time">{fmtTime(p.createdAt)}</div>
+                      </div>
+                      <div className="hq-post__body">{p.body}</div>
+                      {p.imageUrl ? (
+                        <div className="hq-post__imgwrap">
+                          <img className="hq-post__img" src={p.imageUrl} alt="" />
+                        </div>
+                      ) : null}
+                    </div>
+                  ))
+              )}
+            </div>
 
-              <label className='hq-field'>
-                <span>本文</span>
-                <textarea
-                  value={postBody}
-                  onChange={(e) => setPostBody(e.target.value)}
-                  placeholder='例）自販機でジュース買いました！/ ランチ行きました！/ 10分雑談できた など'
-                  rows={4}
-                />
-              </label>
+            <button className="hq-fab" onClick={() => setIsComposerOpen(true)} aria-label="投稿する">
+              ＋
+            </button>
 
-              <div className='hq-row'>
-                <button
-                  className='hq-btn hq-btn--primary'
-                  type='submit'
-                  disabled={isRolling}
-                >
-                  投稿
-                </button>
-                <div className='hq-smallnote'>
-                  ・「ランチ（引き直し）」は<strong>5枚全部を引き直し</strong>
-                  します（ポイントは増えません）。
+            {isComposerOpen && (
+              <div className="hq-modal" role="dialog" aria-modal="true">
+                <div className="hq-modal__backdrop" onClick={() => setIsComposerOpen(false)} />
+                <div className="hq-modal__sheet">
+                  <div className="hq-modal__head">
+                    <div className="hq-modal__title">投稿する</div>
+                    <button className="hq-iconbtn" onClick={() => setIsComposerOpen(false)} aria-label="閉じる">
+                      ×
+                    </button>
+                  </div>
+
+                  {isAdminOpen && (
+                    <div className="hq-admin">
+                      <div className="hq-admin__title">管理者：人物リスト編集</div>
+
+                      <form className="hq-admin__form" onSubmit={addPerson}>
+                        <input
+                          className="hq-input"
+                          value={newName}
+                          onChange={(e) => setNewName(e.target.value)}
+                          placeholder="名前"
+                        />
+                        <input
+                          className="hq-input"
+                          value={newDept}
+                          onChange={(e) => setNewDept(e.target.value)}
+                          placeholder="部署"
+                        />
+                        <button className="hq-btn hq-btn--primary" type="submit">
+                          追加
+                        </button>
+                      </form>
+
+                      <div className="hq-admin__list">
+                        {(people || []).map((p) => (
+                          <div className="hq-admin__row" key={p.id}>
+                            <div className="hq-admin__pill">{p.dept}</div>
+                            <div className="hq-admin__name">{p.name}</div>
+                            <button className="hq-btn hq-btn--danger" onClick={() => removePerson(p.id)} type="button">
+                              削除
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <form className="hq-boardform" onSubmit={submitPost}>
+                    <div className="hq-row">
+                      <label className="hq-field">
+                        <span>投稿タイプ</span>
+                        <select value={postType} onChange={(e) => setPostType(e.target.value)}>
+                          <option value="chat">雑談</option>
+                          <option value="share">できごと共有</option>
+                          <option value="lunch">ランチ（引き直し）</option>
+                          <option value="complete">達成報告</option>
+                        </select>
+                      </label>
+
+                      <label className="hq-field">
+                        <span>相手（任意）</span>
+                        <select value={withWhom} onChange={(e) => setWithWhom(e.target.value)}>
+                          <option value="">未選択</option>
+                          {(people || []).map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.dept} {p.name}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+
+                    <label className="hq-field">
+                      <span>本文</span>
+                      <textarea
+                        value={postBody}
+                        onChange={(e) => setPostBody(e.target.value)}
+                        placeholder="例）30秒だけ雑談できた / 自販機でジュース買いました / など"
+                        rows={4}
+                      />
+                    </label>
+
+                    <div className="hq-row">
+                      <button className="hq-btn hq-btn--primary" type="submit" disabled={isRolling}>
+                        投稿
+                      </button>
+                      <button className="hq-btn" type="button" onClick={() => setIsComposerOpen(false)}>
+                        キャンセル
+                      </button>
+                    </div>
+
+                    <div className="hq-smallnote">
+                      ・「ランチ（引き直し）」は<strong>5枚全部を引き直し</strong>（投稿に相手が必要）
+                      <br />
+                      ・「達成報告」は<strong>クエスト達成判定</strong>に使われます
+                    </div>
+                  </form>
                 </div>
               </div>
-            </form>
-
-            <div className='hq-postlist'>
-              {(posts || []).map((p) => (
-                <article key={p.id} className='hq-post'>
-                  <div className='hq-post__head'>
-                    <div className='hq-post__author'>{p.author}</div>
-                    <div className='hq-post__meta'>
-                      <span className={`hq-tag hq-tag--${p.type}`}>
-                        {p.type === 'chat'
-                          ? '雑談'
-                          : p.type === 'complete'
-                          ? '完了報告'
-                          : 'ランチ'}
-                      </span>
-                      {p.withWhomLabel ? (
-                        <span className='hq-tag hq-tag--who'>
-                          with {p.withWhomLabel}
-                        </span>
-                      ) : null}
-                      <span className='hq-time'>
-                        {formatJPDate(p.createdAt)}
-                      </span>
-                    </div>
-                  </div>
-                  <div className='hq-post__body'>{p.body}</div>
-                </article>
-              ))}
-            </div>
+            )}
           </section>
         )}
 
         {tab === 'rank' && (
-          <section className='hq-panel'>
-            <div className='hq-panel__title'>ポイントランキング</div>
+          <section className="hq-panel">
+            <div className="hq-panel__title">ポイントランキング</div>
             {leaderboard.length === 0 ? (
-              <div className='hq-empty'>まだポイントがありません。</div>
+              <div className="hq-empty">まだポイントがありません。</div>
             ) : (
-              <div className='hq-rank'>
+              <div className="hq-rank">
                 {leaderboard.map((r, idx) => (
-                  <div
-                    key={r.user}
-                    className={`hq-rankrow ${
-                      r.user === currentUser ? 'is-me' : ''
-                    }`}
-                  >
-                    <div className='hq-rankno'>{idx + 1}</div>
-                    <div className='hq-rankuser'>{r.user}</div>
-                    <div className='hq-rankpts'>{r.points} pt</div>
+                  <div key={r.user} className={`hq-rankrow ${r.user === currentUser ? 'is-me' : ''}`}>
+                    <div className="hq-rankno">{idx + 1}</div>
+                    <div className="hq-rankuser">{r.user}</div>
+                    <div className="hq-rankpts">{r.points} pt</div>
                   </div>
                 ))}
               </div>
             )}
-            <div className='hq-smallnote'></div>
           </section>
         )}
       </div>

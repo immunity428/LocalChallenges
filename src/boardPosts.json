@@ -1,0 +1,30 @@
+[
+  {
+    "type": "chat",
+    "withWhomPersonId": "p_sales_1",
+    "withWhomLabel": "営業 佐藤",
+    "body": "今日、営業の佐藤さんと挨拶ついでに30秒だけ雑談。最近寒いですね〜って話しました。",
+    "imageUrl": "/post_images/chat1.png"
+  },
+  {
+    "type": "share",
+    "withWhomPersonId": "",
+    "withWhomLabel": "",
+    "body": "【できごと共有】工場の新しい掲示がわかりやすかった！気づいた人いる？",
+    "imageUrl": "/post_images/share1.jpg"
+  },
+  {
+    "type": "lunch",
+    "withWhomPersonId": "p_dev_1",
+    "withWhomLabel": "開発 田中",
+    "body": "開発の田中さんと食堂でランチしました（引き直し用の例）。",
+    "imageUrl": "/post_images/lunch1.png"
+  },
+  {
+    "type": "complete",
+    "withWhomPersonId": "p_hr_1",
+    "withWhomLabel": "人事 鈴木",
+    "body": "【達成報告】他部署の人に『最近のおすすめ』を聞く\n聞けました！おすすめのお店、今度行ってみます。",
+    "imageUrl": "/post_images/complete1.png"
+  }
+]
